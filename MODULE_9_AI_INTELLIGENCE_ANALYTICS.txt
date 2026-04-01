@@ -1,0 +1,145 @@
+================================================================================
+MODULE 9: AI INTELLIGENCE & ANALYTICS
+================================================================================
+PantryPlus - Comprehensive Household Management Application
+Last Updated: April 1, 2026
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Overview
+2. Smart Inventory Management
+3. Smart Shopping Features
+4. Smart Recipes & Substitutions
+5. Smart Meal Planning
+6. Technical Implementation
+7. User Workflows
+8. Algorithms & Models Used
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The AI Intelligence & Analytics module adds a smart layer to the PantryPlus
+application. It uses historical user data, usage patterns, and predictive
+modeling to automate key household tasks, minimize food waste, and provide
+intelligent recommendations.
+
+KEY FEATURES:
+- Automated expiry date prediction
+- Intelligent item categorization
+- Food waste analysis and reduction tips
+- Consumption pattern recognition
+- AI-generated shopping lists from meal plans
+- Automatic ingredient substitutions
+
+================================================================================
+2. SMART INVENTORY MANAGEMENT
+================================================================================
+
+AI helps users manage their pantry more efficiently without manual data entry.
+
+FEATURES:
+- Expiry Prediction: Forecasts when an item is likely to expire based on its
+  type and historical shelf life.
+- Auto-Categorization: Automatically assigns new items to categories like
+  'Dairy', 'Produce', or 'Grains' using name-based pattern matching.
+- Waste Insights: Analyzes expired items to quantify food waste and provides
+  actionable tips to reduce it.
+
+ANALYTICS:
+Calculates the total value of the current inventory and predicts the 'Run-Out
+Date' for frequently used staples.
+
+================================================================================
+3. SMART SHOPPING FEATURES
+================================================================================
+
+Streamlines the shopping process by forecasting needs.
+
+FEATURES:
+- AI Shopping List: Automatically generates a shopping list based on the
+  selected weekly meal plan and current inventory gaps.
+- Recurring Item Detection: Identifies items bought frequently and suggests
+  adding them to the list before they run out.
+- Best Time to Buy: Analyzes mock market trends and historical frequency to
+  suggest optimal shopping days.
+
+================================================================================
+4. SMART RECIPES & SUBSTITUTIONS
+================================================================================
+
+Leverages AI to maximize the use of available ingredients.
+
+FEATURES:
+- Match Score: Calculates how well a recipe matches current inventory.
+- Leftover Recipes: Recommends recipes (e.g., Stir-fry, Pasta Bake) specifically
+  designed to use up items near their expiry date.
+- Smart Substitutions: Suggests alternatives (e.g., Greek yogurt for sour cream)
+  when a recipe requires a missing ingredient.
+
+================================================================================
+5. SMART MEAL PLANNING
+================================================================================
+
+Creates balanced meal plans dynamically.
+
+FEATURES:
+- Weekly Planner: Generates a full 7-day meal plan based on budget, calorie
+  goals, and dietary restrictions.
+- Batch Cooking Suggestions: Identifies opportunities to cook large portions
+  of a primary meal for multiple days to save time.
+- Nutritional Optimization: Adjusts meal portions to align with fitness goals
+  stored in Module 8 (Integrations).
+
+================================================================================
+6. TECHNICAL IMPLEMENTATION
+================================================================================
+
+6.1 AI SERVICE (lib/services/aiService.ts)
+------------------------------------------
+The core logic for all intelligent features.
+
+KEY FUNCTIONS:
+- predictExpiryDate(item, history): Returns predicted Date.
+- suggestCategory(name, history): Returns best category string.
+- analyzeWaste(expiredItems): Returns WasteInsight object.
+- analyzeUsagePatterns(inventory, history): Returns UsagePattern[].
+- findRecipesFromInventory(inventory, allRecipes): Returns scored recipes.
+
+6.2 DATA DRIVEN LOGIC
+---------------------
+Uses historical data from the local Dexie.js database to train simple linear
+regression models for usage patterns and shelf-life predictions.
+
+================================================================================
+7. USER WORKFLOWS
+================================================================================
+
+7.1 AUTOMATING SHOPPING FROM MEAL PLAN
+--------------------------------------
+1. Generate or select a meal plan in /meals/planner
+2. Click "Generate Shopping List"
+3. AI checks current /inventory
+4. Items not in stock are added to /shopping list
+5. Quantities are adjusted based on remaining stock
+
+7.2 VIEWING WASTE ANALYTICS
+---------------------------
+1. Navigate to /dashboard
+2. Click on "Waste Insights"
+3. View the total dollar value of wasted food
+4. Read AI suggestions (e.g., "Buy smaller quantities of Milk")
+
+================================================================================
+8. ALGORITHMS & MODELS USED
+================================================================================
+
+- Pattern Recognition: Key-value matching for categorization.
+- Moving Average: For consumption rate calculations.
+- Score Matching: Intersection set analysis for recipe matching.
+- Heuristic Rules: For nutrition and batch cooking optimization.
+
+================================================================================
+END OF MODULE 9 DOCUMENTATION
+================================================================================

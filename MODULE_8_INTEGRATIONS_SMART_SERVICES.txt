@@ -1,0 +1,150 @@
+================================================================================
+MODULE 8: EXTERNAL INTEGRATIONS & SMART SERVICES
+================================================================================
+PantryPlus - Comprehensive Household Management Application
+Last Updated: April 1, 2026
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Overview
+2. Calendar Integration
+3. Smart Home Integration
+4. Grocery Delivery Integration
+5. Fitness App Integration
+6. Technical Implementation
+7. User Workflows
+8. API Endpoints Used
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The External Integrations & Smart Services module connects PantryPlus to the
+broader digital ecosystem. This module allows users to synchronize their meal
+plans, manage shopping lists via voice, automate grocery orders, and track
+nutritional goals through third-party platforms.
+
+KEY FEATURES:
+- Google Calendar meal plan sync
+- Amazon Alexa & Google Home voice control
+- Instacart & Amazon Fresh cart creation
+- MyFitnessPal nutrition logging
+- Multi-service price comparison
+- Real-time integration status tracking
+
+================================================================================
+2. CALENDAR INTEGRATION
+================================================================================
+
+PantryPlus allows users to export their meal plans directly to their calendars.
+
+FEATURES:
+- Automatic Breakfast/Lunch/Dinner event creation.
+- Color-coded daily meal types.
+- Automatic sync for the next 7 days.
+- OAuth 2.0 secure connection.
+
+LOGIC:
+Syncs `MealPlanDay` objects from the local storage to the Google Calendar API.
+- Color ID 9 (Blue) for Breakfast.
+- Color ID 10 (Green) for Lunch.
+- Color ID 11 (Red) for Dinner.
+
+================================================================================
+3. SMART HOME INTEGRATION
+================================================================================
+
+Allows for a hands-free experience while in the kitchen using smart speakers.
+
+VOICE SERVICES:
+- Amazon Alexa: Add items to "Alexa shopping list," receive voice announcements
+  for expiring items.
+- Google Home: Sync shopping lists with Google Tasks, set voice reminders.
+
+ANNOUNCEMENTS:
+Smart home devices can announce items expiring within 2 days to prevent waste.
+"Food expiry alert! Urgent: Chicken Breast expiring in 1 day."
+
+================================================================================
+4. GROCERY DELIVERY INTEGRATION
+================================================================================
+
+Automates the transition from "Shopping List" to "At Your Door."
+
+DELIVERY PARTNERS:
+- Instacart: One-click cart creation from the shopping list.
+- Amazon Fresh: Seamless integration with Prime Fresh accounts.
+- Walmart+: Quick checkout for frequently purchased items.
+
+PRICE COMPARISON:
+A unique feature that compares total cart costs across different delivery services
+to help users find the best deals including delivery fees.
+
+================================================================================
+5. FITNESS APP INTEGRATION
+================================================================================
+
+Connects nutrition and meal planning for health-conscious users.
+
+PLATFORMS:
+- MyFitnessPal: Logs daily meal nutritional data (Calories, Protein, Carbs, Fat).
+- Goal Alignment: Automatically checks if the generated meal plan aligns with
+  user-defined nutritional goals.
+
+ADJUSTMENTS:
+"Your daily calories exceed your MyFitnessPal goal by 200 - would you like to
+adjust your meal plan?"
+
+================================================================================
+6. TECHNICAL IMPLEMENTATION
+================================================================================
+
+6.1 INTEGRATION SERVICE (lib/services/integrationService.ts)
+------------------------------------------------------------
+A centralized service module handling all external API calls and OAuth flows.
+
+EXPORTED FUNCTIONS:
+- syncMealPlanToCalendar(mealPlan, token): Pushes events to Google.
+- sendToAlexaShoppingList(items, token): Pushes items to Alexa.
+- comparePrices(items): Queries multiple delivery APIs.
+- logMealToMyFitnessPal(name, nutrients): Pushes nutrition data to MFP.
+
+6.2 OAUTH FLOW
+--------------
+Uses standard OAuth 2.0 with PKCE for secure authentication with third-party
+services. Tokens are stored securely and refreshed automatically when needed.
+
+================================================================================
+7. USER WORKFLOWS
+================================================================================
+
+7.1 SYNCING MEAL PLAN TO GOOGLE CALENDAR
+----------------------------------------
+1. Navigate to /integrations
+2. Click "Connect" on the Google Calendar card
+3. Authorize via Google Account
+4. Click "Sync Now" button
+5. Open Google Calendar to view the new events
+
+7.2 COMPARING GROCERY PRICES
+----------------------------
+1. Add items to your /shopping list
+2. Go to /integrations
+3. Click "Compare Now" on the Price Comparison banner
+4. View the price breakdown for Instacart vs Amazon Fresh vs Walmart+
+5. Select the cheapest service to proceed with checkout
+
+================================================================================
+8. API ENDPOINTS USED
+================================================================================
+
+- Google Calendar: `https://www.googleapis.com/calendar/v3`
+- Alexa: `https://api.amazonalexa.com/v2/householdlists`
+- Google Tasks: `https://tasks.googleapis.com/tasks/v1`
+- Instacart: `https://connect.instacart.com/v2`
+- MyFitnessPal: `https://api.myfitnesspal.com/v2`
+
+================================================================================
+END OF MODULE 8 DOCUMENTATION
+================================================================================

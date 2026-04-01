@@ -1,0 +1,143 @@
+================================================================================
+MODULE 11: SECURITY, ACCESS CONTROL & HOUSEHOLD GOVERNANCE
+================================================================================
+PantryPlus - Comprehensive Household Management Application
+Last Updated: April 1, 2026
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Overview
+2. User Authentication
+3. Household Governance
+4. Firestore Security Rules
+5. Data Privacy
+6. Technical Implementation
+7. User Workflows
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The Security, Access Control & Household Governance module handles the
+fundamental protection of user data and the collaborative aspects of the
+PantryPlus application. It ensures that data is isolated between different
+households and that only authorized users can access or modify their records.
+
+KEY FEATURES:
+- Secure Firebase Authentication (Email + Google)
+- Multi-household membership support
+- Automatic household context filtering
+- Granular Firestore security rules
+- Role-based permissions (Owner, Admin, Member)
+- Protected route redirection
+
+================================================================================
+2. USER AUTHENTICATION
+================================================================================
+
+PantryPlus uses Firebase Auth as the primary security layer.
+
+AUTH CHANNELS:
+- Email/Password: Standard sign-up and sign-in with password validation.
+- Google OAuth: One-click sign-in using Google accounts.
+
+SECURITY:
+- Session Management: Tokens are handled by Firebase and refreshed securely.
+- Protected Routes: Only authenticated users can access the dashboard,
+  inventory, shopping, and settings pages.
+
+FILES:
+- `lib/hooks/useAuth.tsx`
+- `app/auth/signin/page.tsx`
+- `app/auth/signup/page.tsx`
+
+================================================================================
+3. HOUSEHOLD GOVERNANCE
+================================================================================
+
+The core of PantryPlus's collaborative experience.
+
+GOVERNANCE MODEL:
+- Household ID: Every data point (Inventory, Shopping, Meals) is tagged with
+  a `householdId`.
+- Isolation: Users can only see data belonging to their currently active
+  household.
+- Roles:
+  - Owner: Can delete the household and manage all members.
+  - Admin: Can invite members and manage inventory.
+  - Member: Can view and add items but cannot change settings.
+
+COMPONENTS:
+- `app/household/setup`: Initial household creation.
+- `app/household/members`: Member list and invitations.
+
+================================================================================
+4. FIRESTORE SECURITY RULES
+================================================================================
+
+PantryPlus implements a "Default-Deny" policy in Firestore.
+
+CORE RULES:
+- All writes require the user to be a member of the target household.
+- Reads are filtered by household membership.
+- Users cannot modify other users' profile data.
+- Input validation: All writes are checked for required fields (Name, Qty, etc.).
+
+CODE SNIPPET:
+```javascript
+match /inventory/{itemId} {
+  allow read, write: if request.auth != null && 
+    get(/databases/$(database)/documents/households/$(resource.data.householdId)).data.members[request.auth.uid] != null;
+}
+```
+
+================================================================================
+5. DATA PRIVACY
+================================================================================
+
+Privacy-by-design ensures user control.
+
+FEATURES:
+- Anonymous Data: Usage analytics are anonymized.
+- Visibility Toggle: Users can set certain high-value inventory items to "Private"
+  to hide them from other household members.
+- Right to be Forgotten: One-click "Delete All Data" removes both local and
+  cloud records.
+
+================================================================================
+6. TECHNICAL IMPLEMENTATION
+================================================================================
+
+6.1 AUTH CONTEXT PROVIDER (app/layout.tsx)
+------------------------------------------
+Wraps the entire application to provide real-time user status to all components.
+
+6.2 HOUSEHOLD HOOK (lib/hooks/useHousehold.ts)
+----------------------------------------------
+Manages the active household context and handles the switching between multiple
+households for power users.
+
+================================================================================
+7. USER WORKFLOWS
+================================================================================
+
+7.1 CREATING A NEW HOUSEHOLD
+-----------------------------
+1. Sign in to PantryPlus
+2. Navigate to /household/setup
+3. Enter Household Name (e.g., "Smith Family")
+4. System generates a unique invite code
+5. Start adding items to the shared inventory
+
+7.2 INVITING A FAMILY MEMBER
+----------------------------
+1. Go to /settings -> Household
+2. Copy the "Invite Code"
+3. Share code with a family member
+4. Family member enters code in their /household/setup
+5. Both users now see the same real-time inventory
+
+================================================================================
+END OF MODULE 11 DOCUMENTATION
+================================================================================

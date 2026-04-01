@@ -1,0 +1,413 @@
+================================================================================
+MODULE 3: MEAL PLANNING & RECIPE MANAGEMENT
+================================================================================
+PantryPlus - Comprehensive Household Management Application
+Last Updated: December 27, 2025
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Overview
+2. Meal Planning Features
+3. Recipe Management
+4. File Structure
+5. Technical Implementation
+6. Data Models
+7. User Workflows
+8. Integration Points
+9. Dependencies
+10. Future Enhancements
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The Meal Planning & Recipe Management module enables households to plan their
+weekly meals, browse recipes, and integrate meal plans with shopping lists and
+inventory. This module helps reduce food waste and streamline meal preparation.
+
+KEY FEATURES:
+- Weekly meal calendar (breakfast, lunch, dinner, snacks)
+- Recipe browser with sample recipes
+- Meal-to-shopping list integration
+- Servings tracking
+- Nutrition information support
+- Recipe ingredient matching with inventory
+
+================================================================================
+2. MEAL PLANNING FEATURES
+================================================================================
+
+2.1 WEEKLY MEAL PLANNER
+-----------------------
+- 7-day calendar view
+- 4 meal types per day (breakfast, lunch, dinner, snack)
+- Drag-and-drop meal scheduling (future)
+- Recipe assignment to meal slots
+- Custom meal entries
+- Servings adjustment
+
+2.2 MEAL CALENDAR
+-----------------
+- Week navigation
+- Day-by-day breakdown
+- Meal type rows
+- Empty slot indicators
+- Quick add functionality
+- Visual meal preview
+
+2.3 MEAL MANAGEMENT
+-------------------
+- Add meals from recipes
+- Create custom meals
+- Edit meal details
+- Delete meals
+- Duplicate meals
+- Meal history tracking
+
+================================================================================
+3. RECIPE MANAGEMENT
+================================================================================
+
+3.1 RECIPE BROWSER
+------------------
+- Sample recipe library
+- Recipe search (future)
+- Category filtering (future)
+- Ingredient-based search (future)
+- Recipe cards with details
+
+3.2 RECIPE DETAILS
+------------------
+Each recipe includes:
+- Name and description
+- Ingredient list with quantities
+- Preparation instructions
+- Prep time and cook time
+- Servings
+- Optional image
+- Tags for categorization
+
+3.3 RECIPE FEATURES
+-------------------
+- View available ingredients from inventory
+- Check missing ingredients
+- Add missing items to shopping list
+- Scale recipe servings
+- Save favorite recipes (future)
+
+================================================================================
+4. FILE STRUCTURE
+================================================================================
+
+app/
+├── meals/
+│   └── planner/
+│       └── page.tsx                 # Weekly meal planner
+│
+├── recipes/
+│   └── page.tsx                     # Recipe browser
+│
+lib/
+├── hooks/
+│   └── useMeals.ts                  # Meal planning hook
+│
+└── db/
+    └── dexie.ts                     # Database schema (MealPlan interface)
+
+================================================================================
+5. TECHNICAL IMPLEMENTATION
+================================================================================
+
+5.1 MEAL PLANNER PAGE (app/meals/planner/page.tsx)
+---------------------------------------------------
+
+FEATURES:
+- Weekly calendar grid
+- Meal type rows
+- Date navigation
+- Add meal functionality
+- Recipe integration
+- Household filtering
+
+STATE MANAGEMENT:
+- selectedDate: Current week start date
+- meals: Array of meal plans
+- currentHousehold: Active household
+
+CALENDAR LOGIC:
+```typescript
+const getWeekDates = () => {
+  const dates = [];
+  const today = new Date(selectedDate);
+  const dayOfWeek = today.getDay();
+  const diff = today.getDate() - dayOfWeek;
+  
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today.setDate(diff + i));
+    dates.push(date.toISOString().split('T')[0]);
+  }
+  return dates;
+};
+```
+
+MEAL SLOT LOOKUP:
+```typescript
+const getMealForSlot = (date: string, mealType: string) => {
+  return meals.find(m => m.date === date && m.mealType === mealType);
+};
+```
+
+5.2 RECIPE PAGE (app/recipes/page.tsx)
+---------------------------------------
+
+FEATURES:
+- Recipe grid display
+- Available ingredients check
+- Sample recipe data
+- Recipe details modal (future)
+- Add to meal plan (future)
+
+INGREDIENT MATCHING:
+```typescript
+const availableIngredients = recipe.ingredients.filter(ingredient =>
+  items.some(item => 
+    item.name.toLowerCase().includes(ingredient.name.toLowerCase())
+  )
+);
+```
+
+5.3 MEALS HOOK (lib/hooks/useMeals.ts)
+---------------------------------------
+
+EXPORTED FUNCTIONS:
+- addMeal(meal): Create new meal plan
+- updateMeal(id, updates): Update existing meal
+- deleteMeal(id): Remove meal
+- getMealPlan(startDate, endDate): Get meals for date range
+
+STATE:
+- meals: Array of meal plans
+- loading: Loading state
+
+SYNCHRONIZATION:
+- Real-time Firebase sync
+- Local IndexedDB caching
+- Household filtering
+- Offline support
+
+================================================================================
+6. DATA MODELS
+================================================================================
+
+6.1 MEAL PLAN OBJECT
+--------------------
+{
+  id?: number
+  firebaseId?: string
+  householdId: string
+  date: string                        # ISO date string
+  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+  recipeId?: string                   # Link to recipe
+  recipeName?: string                 # Recipe name for display
+  customMeal?: string                 # Custom meal name
+  servings: number
+  assignedTo?: string                 # Member assigned to cook
+  notes?: string
+  nutritionInfo?: {
+    calories: number
+    protein: number
+    carbs: number
+    fat: number
+  }
+  createdAt: string
+  updatedAt: string
+  syncStatus: 'synced' | 'pending' | 'error'
+}
+
+6.2 RECIPE OBJECT
+-----------------
+{
+  id?: number
+  firebaseId?: string
+  householdId: string
+  name: string
+  description?: string
+  ingredients: Array<{
+    name: string
+    quantity: number
+    unit: string
+  }>
+  instructions: string[]
+  prepTime?: number                   # Minutes
+  cookTime?: number                   # Minutes
+  servings?: number
+  imageUrl?: string
+  tags?: string[]
+  createdBy?: string
+  createdAt: string
+  updatedAt: string
+  syncStatus: 'synced' | 'pending' | 'error'
+}
+
+================================================================================
+7. USER WORKFLOWS
+================================================================================
+
+7.1 PLANNING WEEKLY MEALS
+--------------------------
+1. Navigate to /meals/planner
+2. View current week calendar
+3. Click empty meal slot
+4. Select recipe or enter custom meal
+5. Set servings
+6. Optionally assign to household member
+7. Save meal plan
+8. Meal appears in calendar
+
+7.2 BROWSING RECIPES
+--------------------
+1. Navigate to /recipes
+2. View recipe cards
+3. See available ingredients highlighted
+4. Click recipe for details
+5. Add to meal plan (future)
+6. Add missing ingredients to shopping list
+
+7.3 GENERATING SHOPPING LIST FROM MEALS
+----------------------------------------
+1. Plan meals for the week
+2. System identifies required ingredients
+3. Check against current inventory
+4. Generate shopping list for missing items
+5. Navigate to shopping list
+6. Review and purchase items
+
+================================================================================
+8. INTEGRATION POINTS
+================================================================================
+
+8.1 INVENTORY INTEGRATION
+--------------------------
+- Check ingredient availability
+- Highlight available ingredients
+- Suggest recipes based on inventory
+- Update inventory after cooking
+
+8.2 SHOPPING LIST INTEGRATION
+------------------------------
+- Generate shopping list from meal plan
+- Add missing ingredients automatically
+- Mark items as needed for specific meals
+- Link shopping items to recipes
+
+8.3 HOUSEHOLD INTEGRATION
+--------------------------
+- Filter meals by household
+- Assign cooking tasks to members
+- Share meal plans with household
+- Collaborative meal planning
+
+================================================================================
+9. DEPENDENCIES
+================================================================================
+
+CORE DEPENDENCIES:
+- next: ^14.x
+- react: ^18.x
+- typescript: ^5.x
+- framer-motion: ^10.x
+
+CUSTOM HOOKS:
+- useAuth
+- useHousehold
+- useMeals
+- useInventory
+
+DATABASE:
+- Firebase Firestore
+- Dexie.js (IndexedDB)
+
+================================================================================
+10. FUTURE ENHANCEMENTS
+================================================================================
+
+10.1 MEAL PLANNING ENHANCEMENTS
+--------------------------------
+- [ ] Drag-and-drop meal scheduling
+- [ ] Meal templates (weekly patterns)
+- [ ] Meal history and favorites
+- [ ] Nutrition goal tracking
+- [ ] Calorie counting
+- [ ] Dietary restriction filters
+- [ ] Meal prep scheduling
+
+10.2 RECIPE ENHANCEMENTS
+------------------------
+- [ ] AI-powered recipe suggestions
+- [ ] Custom recipe creation
+- [ ] Recipe import from URLs
+- [ ] Recipe sharing between households
+- [ ] Recipe ratings and reviews
+- [ ] Photo upload for recipes
+- [ ] Video cooking instructions
+
+10.3 SMART FEATURES
+-------------------
+- [ ] Automatic shopping list generation
+- [ ] Leftover tracking
+- [ ] Ingredient substitution suggestions
+- [ ] Seasonal recipe recommendations
+- [ ] Budget-based meal planning
+- [ ] Batch cooking suggestions
+
+10.4 NUTRITION FEATURES
+-----------------------
+- [ ] Detailed nutrition tracking
+- [ ] Macro/micro nutrient goals
+- [ ] Allergen warnings
+- [ ] Health goal integration
+- [ ] Meal nutrition summaries
+- [ ] Weekly nutrition reports
+
+================================================================================
+USAGE EXAMPLES
+================================================================================
+
+EXAMPLE 1: Planning Monday Dinner
+----------------------------------
+1. Navigate to /meals/planner
+2. Find Monday column, Dinner row
+3. Click "+ Add meal"
+4. Select "Pasta Carbonara" from recipes
+5. Set servings to 4
+6. Assign to "John"
+7. Click Save
+8. Meal appears in Monday Dinner slot
+
+EXAMPLE 2: Checking Recipe Ingredients
+---------------------------------------
+1. Navigate to /recipes
+2. View "Pasta Carbonara" recipe
+3. See ingredients:
+   - Pasta (available - in inventory)
+   - Eggs (available - in inventory)
+   - Bacon (missing - not in inventory)
+   - Parmesan (missing - not in inventory)
+4. Click "Add missing to shopping list"
+5. Bacon and Parmesan added to shopping list
+
+EXAMPLE 3: Weekly Meal Planning
+--------------------------------
+1. Sunday evening, plan week ahead
+2. Add breakfast for Mon-Fri (cereal, toast, eggs)
+3. Add lunch for Mon-Fri (sandwiches, salads)
+4. Add dinner for Mon-Sun (varied recipes)
+5. Review total ingredients needed
+6. Generate shopping list
+7. Shop on Monday
+8. Follow meal plan throughout week
+
+================================================================================
+END OF MODULE 3 DOCUMENTATION
+================================================================================

@@ -1,0 +1,541 @@
+================================================================================
+MODULE 2: DASHBOARD & NAVIGATION SYSTEM
+================================================================================
+PantryPlus - Comprehensive Household Management Application
+Last Updated: December 27, 2025
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Overview
+2. Dashboard Features
+3. File Structure
+4. Technical Implementation
+5. Statistics & Analytics
+6. Quick Actions
+7. Navigation System
+8. UI Components
+9. Dependencies
+10. Future Enhancements
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The Dashboard & Navigation module serves as the central hub of the PantryPlus
+application. It provides users with an at-a-glance view of their household's
+status, quick access to all features, and comprehensive navigation throughout
+the application.
+
+KEY FEATURES:
+- Real-time inventory statistics
+- Expiry notifications
+- Quick action cards for all features
+- Household overview
+- Theme toggle (light/dark mode)
+- Responsive design
+- Animated transitions
+
+================================================================================
+2. DASHBOARD FEATURES
+================================================================================
+
+2.1 MAIN COMPONENTS
+-------------------
+- Header with branding and user info
+- Statistics cards (inventory metrics)
+- Expiry notifications panel
+- Quick actions grid (8 feature cards)
+- Theme toggle
+- Sign-out functionality
+
+2.2 STATISTICS DISPLAYED
+------------------------
+1. Total Items: Count of all inventory items
+2. Expiring Soon: Items expiring within 7 days
+3. Expired Items: Items past expiry date
+
+2.3 QUICK ACTIONS
+-----------------
+1. Inventory Management
+2. Shopping List
+3. Meal Planner (NEW)
+4. Recipes
+5. Tasks (NEW)
+6. Expenses (NEW)
+7. Household Settings (NEW)
+8. Barcode Scanner
+
+================================================================================
+3. FILE STRUCTURE
+================================================================================
+
+app/
+├── dashboard/
+│   └── page.tsx                     # Main dashboard page
+│
+├── components/
+│   ├── ExpiryNotifications.tsx      # Expiry alerts component
+│   ├── ThemeToggle.tsx              # Dark mode toggle
+│   └── ThemeProvider.tsx            # Theme context provider
+│
+└── layout.tsx                       # Root layout with providers
+
+================================================================================
+4. TECHNICAL IMPLEMENTATION
+================================================================================
+
+4.1 DASHBOARD PAGE (app/dashboard/page.tsx)
+--------------------------------------------
+
+IMPORTS:
+- useAuth: Authentication state
+- useHousehold: Current household context
+- useInventory: Inventory data
+- Framer Motion: Animations
+- Next.js Link: Navigation
+
+STATE MANAGEMENT:
+- mounted: Client-side hydration check
+- user: Current authenticated user
+- currentHousehold: Active household
+- items: Inventory items for statistics
+
+AUTHENTICATION CHECK:
+- Redirects to /auth/signin if not authenticated
+- Redirects to /household/setup if no household
+- Shows loading spinner during auth check
+
+STATISTICS CALCULATION:
+```typescript
+const totalItems = items.length;
+
+const expiringItems = items.filter(item => {
+  if (!item.expiryDate) return false;
+  const daysUntilExpiry = Math.floor(
+    (new Date(item.expiryDate).getTime() - new Date().getTime()) 
+    / (1000 * 60 * 60 * 24)
+  );
+  return daysUntilExpiry <= 7 && daysUntilExpiry >= 0;
+}).length;
+
+const expiredItems = items.filter(item => {
+  if (!item.expiryDate) return false;
+  return new Date(item.expiryDate) < new Date();
+}).length;
+```
+
+4.2 EXPIRY NOTIFICATIONS (app/components/ExpiryNotifications.tsx)
+------------------------------------------------------------------
+
+PURPOSE: Alert users about expiring and expired items
+
+FEATURES:
+- Displays items expiring within 7 days
+- Shows expired items
+- Color-coded alerts (yellow for expiring, red for expired)
+- Dismissible notifications
+- Animated entry
+
+LOGIC:
+- Filters inventory by expiry date
+- Calculates days until expiry
+- Sorts by urgency
+- Displays top 5 most urgent items
+
+4.3 THEME TOGGLE (app/components/ThemeToggle.tsx)
+--------------------------------------------------
+
+PURPOSE: Switch between light and dark modes
+
+FEATURES:
+- Sun/moon icon toggle
+- Persists preference in localStorage
+- Smooth transition animations
+- System preference detection
+
+IMPLEMENTATION:
+- Uses next-themes package
+- Applies dark class to HTML element
+- CSS variables for theme colors
+
+================================================================================
+5. STATISTICS & ANALYTICS
+================================================================================
+
+5.1 INVENTORY STATISTICS
+-------------------------
+
+Total Items Card:
+- Displays total count of inventory items
+- Icon: 📦
+- Color: Indigo
+- Updates in real-time
+
+Expiring Soon Card:
+- Items expiring within 7 days
+- Icon: ⏰
+- Color: Yellow/Orange
+- Urgent indicator
+
+Expired Items Card:
+- Items past expiry date
+- Icon: ⚠️
+- Color: Red
+- Critical alert
+
+5.2 CALCULATION METHODS
+-----------------------
+
+Days Until Expiry:
+```
+daysUntilExpiry = (expiryDate - currentDate) / (1000 * 60 * 60 * 24)
+```
+
+Expiring Soon Filter:
+```
+daysUntilExpiry <= 7 AND daysUntilExpiry >= 0
+```
+
+Expired Filter:
+```
+expiryDate < currentDate
+```
+
+================================================================================
+6. QUICK ACTIONS
+================================================================================
+
+6.1 ACTION CARDS
+----------------
+
+Each card includes:
+- Large emoji icon
+- Feature title
+- Brief description
+- Hover animation
+- Click navigation
+
+6.2 FEATURE CARDS
+-----------------
+
+1. INVENTORY (📦)
+   Route: /inventory
+   Description: Manage your pantry items
+   Color: Indigo
+
+2. SHOPPING LIST (🛒)
+   Route: /shopping
+   Description: Create and manage lists
+   Color: Green
+
+3. MEAL PLANNER (🍽️) [NEW]
+   Route: /meals/planner
+   Description: Plan weekly meals
+   Color: Orange
+
+4. RECIPES (🍳)
+   Route: /recipes
+   Description: Find recipes to cook
+   Color: Red
+
+5. TASKS (✓) [NEW]
+   Route: /tasks
+   Description: Household task management
+   Color: Blue
+
+6. EXPENSES (💰) [NEW]
+   Route: /expenses
+   Description: Track household expenses
+   Color: Purple
+
+7. HOUSEHOLD (🏠) [NEW]
+   Route: /household/settings
+   Description: Manage household settings
+   Color: Teal
+
+8. SCAN BARCODE (📷)
+   Route: /inventory?scan=true
+   Description: Add items by scanning
+   Color: Gray
+
+================================================================================
+7. NAVIGATION SYSTEM
+================================================================================
+
+7.1 HEADER NAVIGATION
+----------------------
+- PantryPlus logo (links to dashboard)
+- User email display
+- Theme toggle button
+- Sign out button
+
+7.2 ROUTE PROTECTION
+--------------------
+All routes require authentication:
+- Checks user state on mount
+- Redirects to /auth/signin if not authenticated
+- Redirects to /household/setup if no household
+- Shows loading state during checks
+
+7.3 NAVIGATION PATTERNS
+-----------------------
+- Next.js Link for client-side navigation
+- Prefetching for faster page loads
+- Smooth transitions with Framer Motion
+- Back button support
+
+================================================================================
+8. UI COMPONENTS
+================================================================================
+
+8.1 LAYOUT STRUCTURE
+--------------------
+```
+<div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <header>
+    <!-- Logo, user info, theme toggle, sign out -->
+  </header>
+  
+  <main className="container mx-auto px-4 py-8">
+    <!-- Dashboard title -->
+    <!-- Expiry notifications -->
+    <!-- Statistics cards -->
+    <!-- Quick actions grid -->
+  </main>
+</div>
+```
+
+8.2 RESPONSIVE DESIGN
+---------------------
+- Mobile: Single column layout
+- Tablet: 2-column grid for cards
+- Desktop: 3-column statistics, 4-column actions
+- Fluid typography
+- Touch-friendly buttons
+
+8.3 ANIMATIONS
+--------------
+Using Framer Motion:
+- Fade in on mount
+- Stagger children animations
+- Hover scale effects
+- Smooth transitions
+
+Example:
+```typescript
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.6 }}
+>
+  {/* Content */}
+</motion.div>
+```
+
+8.4 DARK MODE SUPPORT
+---------------------
+- Automatic system preference detection
+- Manual toggle override
+- Persistent user preference
+- Smooth color transitions
+- Optimized contrast ratios
+
+Color Scheme:
+- Light: Gray-50 background, white cards
+- Dark: Gray-900 background, gray-800 cards
+- Text: Gray-900 (light) / White (dark)
+
+================================================================================
+9. DEPENDENCIES
+================================================================================
+
+CORE DEPENDENCIES:
+- next: ^14.x
+- react: ^18.x
+- typescript: ^5.x
+- framer-motion: ^10.x
+- next-themes: ^0.2.x
+
+CUSTOM HOOKS:
+- useAuth (authentication state)
+- useHousehold (household context)
+- useInventory (inventory data)
+
+COMPONENTS:
+- ExpiryNotifications
+- ThemeToggle
+- ThemeProvider
+
+================================================================================
+10. FUTURE ENHANCEMENTS
+================================================================================
+
+10.1 DASHBOARD ENHANCEMENTS
+----------------------------
+- [ ] Household overview widget
+- [ ] Upcoming meals preview (next 3 days)
+- [ ] Pending tasks summary
+- [ ] Budget status indicator
+- [ ] Recent expenses list
+- [ ] Waste reduction metrics
+- [ ] Member activity feed
+
+10.2 STATISTICS IMPROVEMENTS
+-----------------------------
+- [ ] Weekly/monthly trends
+- [ ] Spending analytics
+- [ ] Task completion rates
+- [ ] Meal planning adherence
+- [ ] Inventory turnover rate
+- [ ] Waste tracking
+
+10.3 NAVIGATION ENHANCEMENTS
+----------------------------
+- [ ] Household selector dropdown
+- [ ] Search functionality
+- [ ] Keyboard shortcuts
+- [ ] Breadcrumb navigation
+- [ ] Recent pages history
+- [ ] Favorites/pinned features
+
+10.4 PERSONALIZATION
+--------------------
+- [ ] Customizable dashboard layout
+- [ ] Widget drag-and-drop
+- [ ] Personalized quick actions
+- [ ] Custom color themes
+- [ ] Dashboard templates
+- [ ] User preferences
+
+10.5 NOTIFICATIONS
+------------------
+- [ ] Real-time notifications badge
+- [ ] Notification center
+- [ ] Push notifications (PWA)
+- [ ] Email digest
+- [ ] SMS alerts
+- [ ] Notification preferences
+
+================================================================================
+USAGE EXAMPLES
+================================================================================
+
+EXAMPLE 1: Viewing Dashboard
+-----------------------------
+1. User logs in
+2. Redirected to /dashboard
+3. Dashboard loads with animations
+4. Statistics cards display:
+   - Total Items: 45
+   - Expiring Soon: 3
+   - Expired: 1
+5. Expiry notifications show urgent items
+6. Quick actions grid displays all features
+
+EXAMPLE 2: Navigating to Feature
+---------------------------------
+1. User on dashboard
+2. Clicks "Meal Planner" card
+3. Smooth transition to /meals/planner
+4. Meal planner page loads
+5. Back button returns to dashboard
+
+EXAMPLE 3: Checking Expiring Items
+-----------------------------------
+1. Dashboard shows "Expiring Soon: 3"
+2. Expiry notifications panel displays:
+   - Milk (expires in 2 days)
+   - Bread (expires in 4 days)
+   - Yogurt (expires in 6 days)
+3. User clicks notification
+4. Navigates to inventory with filter applied
+
+EXAMPLE 4: Switching Theme
+---------------------------
+1. User clicks theme toggle (sun icon)
+2. Page transitions to dark mode
+3. Icon changes to moon
+4. Preference saved to localStorage
+5. All pages now use dark theme
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ISSUE: Dashboard not loading
+SOLUTION:
+- Check authentication status
+- Verify household exists
+- Check browser console for errors
+- Clear cache and reload
+
+ISSUE: Statistics showing incorrect numbers
+SOLUTION:
+- Verify inventory data is synced
+- Check date calculations
+- Refresh the page
+- Check IndexedDB data
+
+ISSUE: Quick actions not navigating
+SOLUTION:
+- Check Next.js routing
+- Verify page files exist
+- Check browser console
+- Clear Next.js cache
+
+ISSUE: Theme not persisting
+SOLUTION:
+- Check localStorage permissions
+- Verify next-themes configuration
+- Clear browser storage
+- Check ThemeProvider setup
+
+ISSUE: Animations not working
+SOLUTION:
+- Verify Framer Motion installation
+- Check for JavaScript errors
+- Test in different browser
+- Disable browser extensions
+
+================================================================================
+PERFORMANCE OPTIMIZATION
+================================================================================
+
+OPTIMIZATION TECHNIQUES:
+- Lazy loading for heavy components
+- Memoization of statistics calculations
+- Debounced data fetching
+- Image optimization
+- Code splitting
+- Prefetching routes
+
+LOADING STATES:
+- Skeleton screens for cards
+- Spinner for authentication
+- Progressive enhancement
+- Optimistic UI updates
+
+================================================================================
+ACCESSIBILITY
+================================================================================
+
+WCAG COMPLIANCE:
+- Semantic HTML structure
+- ARIA labels for icons
+- Keyboard navigation support
+- Focus indicators
+- Color contrast ratios
+- Screen reader compatibility
+
+KEYBOARD SHORTCUTS (Future):
+- Alt + D: Dashboard
+- Alt + I: Inventory
+- Alt + S: Shopping
+- Alt + M: Meals
+- Alt + T: Tasks
+- Alt + E: Expenses
+
+================================================================================
+END OF MODULE 2 DOCUMENTATION
+================================================================================

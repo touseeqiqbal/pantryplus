@@ -1,0 +1,465 @@
+================================================================================
+MODULE 4: TASK MANAGEMENT & HOUSEHOLD COORDINATION
+================================================================================
+PantryPlus - Comprehensive Household Management Application
+Last Updated: December 27, 2025
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Overview
+2. Task Management Features
+3. File Structure
+4. Technical Implementation
+5. Data Models
+6. User Workflows
+7. Task Categories & Priorities
+8. Dependencies
+9. Future Enhancements
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The Task Management module enables households to coordinate and track household
+tasks, assign responsibilities to members, set priorities and due dates, and
+monitor task completion. This module improves household efficiency and ensures
+fair distribution of responsibilities.
+
+KEY FEATURES:
+- Task creation and assignment
+- Priority levels (low, medium, high)
+- Task categories (cleaning, cooking, shopping, maintenance, other)
+- Due date tracking
+- Task filtering (all, my tasks, completed)
+- Task completion tracking
+- Recurring tasks support (infrastructure)
+
+================================================================================
+2. TASK MANAGEMENT FEATURES
+================================================================================
+
+2.1 TASK DASHBOARD
+------------------
+- View all household tasks
+- Filter by status (all/my tasks/completed)
+- Task cards with details
+- Quick complete button
+- Delete functionality
+- Add new task modal
+
+2.2 TASK PROPERTIES
+-------------------
+- Title (required)
+- Description (optional)
+- Category (cleaning, cooking, shopping, maintenance, other)
+- Priority (low, medium, high)
+- Assigned member (optional)
+- Due date (optional)
+- Status (pending, in-progress, completed)
+- Recurring pattern (future)
+
+2.3 TASK ACTIONS
+----------------
+- Create new task
+- Assign to household member
+- Update task details
+- Mark as complete
+- Delete task
+- Filter and sort tasks
+
+================================================================================
+3. FILE STRUCTURE
+================================================================================
+
+app/
+└── tasks/
+    └── page.tsx                     # Task dashboard
+
+lib/
+├── hooks/
+│   └── useTasks.ts                  # Task management hook
+│
+└── db/
+    └── dexie.ts                     # Database schema (Task interface)
+
+================================================================================
+4. TECHNICAL IMPLEMENTATION
+================================================================================
+
+4.1 TASKS PAGE (app/tasks/page.tsx)
+------------------------------------
+
+FEATURES:
+- Task list with filtering
+- Add task modal
+- Complete/delete actions
+- Priority and category badges
+- Due date display
+- Household member assignment
+
+STATE MANAGEMENT:
+- showAddModal: Modal visibility
+- filter: Current filter (all/my-tasks/completed)
+- formData: New task form state
+- tasks: Array of tasks
+
+FILTERING LOGIC:
+```typescript
+const getFilteredTasks = () => {
+  if (filter === 'my-tasks') return getMyTasks();
+  if (filter === 'completed') 
+    return tasks.filter(t => t.status === 'completed');
+  return tasks.filter(t => t.status !== 'completed');
+};
+```
+
+TASK FORM:
+- Title input
+- Description textarea
+- Category dropdown
+- Priority dropdown
+- Due date picker
+- Submit/cancel buttons
+
+4.2 TASKS HOOK (lib/hooks/useTasks.ts)
+---------------------------------------
+
+EXPORTED FUNCTIONS:
+- addTask(task): Create new task
+- updateTask(id, updates): Update task
+- completeTask(id): Mark task as complete
+- deleteTask(id): Remove task
+- getMyTasks(): Get tasks assigned to current user
+- getTasks(filters): Get filtered tasks
+
+STATE:
+- tasks: Array of tasks
+- loading: Loading state
+
+FILTERS:
+```typescript
+getTasks({
+  status?: 'pending' | 'in-progress' | 'completed'
+  assignedTo?: string
+  category?: string
+  priority?: string
+})
+```
+
+SYNCHRONIZATION:
+- Real-time Firebase sync
+- Local IndexedDB caching
+- Household filtering
+- Offline support
+
+================================================================================
+5. DATA MODELS
+================================================================================
+
+5.1 TASK OBJECT
+---------------
+{
+  id?: number
+  firebaseId?: string
+  householdId: string
+  title: string
+  description?: string
+  category: 'cleaning' | 'cooking' | 'shopping' | 'maintenance' | 'other'
+  assignedTo?: string                 # User ID
+  createdBy: string                   # User ID
+  priority: 'low' | 'medium' | 'high'
+  dueDate?: string                    # ISO date string
+  recurring?: {
+    frequency: 'daily' | 'weekly' | 'monthly'
+    interval: number
+  }
+  status: 'pending' | 'in-progress' | 'completed'
+  completedAt?: string
+  completedBy?: string                # User ID
+  createdAt: string
+  updatedAt: string
+  syncStatus: 'synced' | 'pending' | 'error'
+}
+
+================================================================================
+6. USER WORKFLOWS
+================================================================================
+
+6.1 CREATING A TASK
+-------------------
+1. Navigate to /tasks
+2. Click "+ Add Task"
+3. Enter task title (e.g., "Clean kitchen")
+4. Add description (optional)
+5. Select category (cleaning)
+6. Set priority (medium)
+7. Choose due date (tomorrow)
+8. Optionally assign to member
+9. Click "Add Task"
+10. Task appears in task list
+
+6.2 COMPLETING A TASK
+---------------------
+1. View task list
+2. Find task to complete
+3. Click "Complete" button
+4. Task marked as completed
+5. Task moves to completed filter
+6. Completion timestamp recorded
+7. Completed by user recorded
+
+6.3 VIEWING MY TASKS
+--------------------
+1. Navigate to /tasks
+2. Click "My Tasks" filter
+3. See only tasks assigned to you
+4. Tasks sorted by priority and due date
+5. Complete or update tasks
+6. Track personal task progress
+
+6.4 MANAGING HOUSEHOLD TASKS
+-----------------------------
+1. View all household tasks
+2. Assign unassigned tasks to members
+3. Update task priorities
+4. Set or adjust due dates
+5. Monitor task completion
+6. Ensure fair task distribution
+
+================================================================================
+7. TASK CATEGORIES & PRIORITIES
+================================================================================
+
+7.1 TASK CATEGORIES
+-------------------
+
+CLEANING:
+- Vacuum floors
+- Clean bathrooms
+- Dust furniture
+- Wash windows
+- Organize closets
+
+COOKING:
+- Prepare breakfast
+- Cook dinner
+- Meal prep
+- Bake desserts
+- Pack lunches
+
+SHOPPING:
+- Grocery shopping
+- Household supplies
+- Online orders
+- Return items
+- Price comparisons
+
+MAINTENANCE:
+- Fix leaky faucet
+- Change air filters
+- Yard work
+- Car maintenance
+- Home repairs
+
+OTHER:
+- Pay bills
+- Schedule appointments
+- Pet care
+- Laundry
+- Miscellaneous
+
+7.2 PRIORITY LEVELS
+-------------------
+
+HIGH PRIORITY:
+- Urgent tasks
+- Time-sensitive items
+- Critical household needs
+- Safety concerns
+- Color: Red badge
+
+MEDIUM PRIORITY:
+- Regular tasks
+- Scheduled activities
+- Normal maintenance
+- Routine chores
+- Color: Yellow badge
+
+LOW PRIORITY:
+- Optional tasks
+- Future planning
+- Nice-to-have items
+- Non-urgent work
+- Color: Gray badge
+
+7.3 STATUS TRACKING
+-------------------
+
+PENDING:
+- Newly created tasks
+- Not yet started
+- Awaiting assignment
+- Default status
+
+IN-PROGRESS:
+- Currently being worked on
+- Partially completed
+- Active tasks
+- Future feature
+
+COMPLETED:
+- Finished tasks
+- Verified completion
+- Archived tasks
+- Historical record
+
+================================================================================
+8. DEPENDENCIES
+================================================================================
+
+CORE DEPENDENCIES:
+- next: ^14.x
+- react: ^18.x
+- typescript: ^5.x
+- framer-motion: ^10.x
+
+CUSTOM HOOKS:
+- useAuth
+- useHousehold
+- useTasks
+
+DATABASE:
+- Firebase Firestore
+- Dexie.js (IndexedDB)
+
+================================================================================
+9. FUTURE ENHANCEMENTS
+================================================================================
+
+9.1 TASK FEATURES
+-----------------
+- [ ] Recurring tasks automation
+- [ ] Task templates
+- [ ] Subtasks/checklists
+- [ ] Task dependencies
+- [ ] Task attachments (photos)
+- [ ] Task comments/notes
+- [ ] Task history tracking
+
+9.2 ASSIGNMENT FEATURES
+-----------------------
+- [ ] Auto-assignment based on rotation
+- [ ] Task claiming (self-assignment)
+- [ ] Workload balancing
+- [ ] Skill-based assignment
+- [ ] Task swapping between members
+- [ ] Assignment notifications
+
+9.3 SCHEDULING FEATURES
+-----------------------
+- [ ] Task calendar view
+- [ ] Recurring task patterns
+- [ ] Task reminders
+- [ ] Due date notifications
+- [ ] Overdue task alerts
+- [ ] Task scheduling suggestions
+
+9.4 GAMIFICATION
+----------------
+- [ ] Points system for completed tasks
+- [ ] Achievement badges
+- [ ] Leaderboards
+- [ ] Streaks for consistency
+- [ ] Rewards system
+- [ ] Family challenges
+
+9.5 ANALYTICS
+-------------
+- [ ] Task completion rates
+- [ ] Member contribution stats
+- [ ] Category breakdown
+- [ ] Time tracking
+- [ ] Productivity insights
+- [ ] Task trends
+
+================================================================================
+USAGE EXAMPLES
+================================================================================
+
+EXAMPLE 1: Weekly Cleaning Schedule
+------------------------------------
+1. Create task "Vacuum living room"
+   - Category: Cleaning
+   - Priority: Medium
+   - Due: Every Saturday
+   - Assign to: Rotating members
+
+2. Create task "Clean bathrooms"
+   - Category: Cleaning
+   - Priority: High
+   - Due: Every Sunday
+   - Assign to: Specific member
+
+3. Create task "Dust furniture"
+   - Category: Cleaning
+   - Priority: Low
+   - Due: Bi-weekly
+   - Assign to: Anyone
+
+EXAMPLE 2: Meal Preparation Tasks
+----------------------------------
+1. Create task "Prepare Monday dinner"
+   - Category: Cooking
+   - Priority: High
+   - Due: Monday 6 PM
+   - Assign to: John
+
+2. Create task "Pack school lunches"
+   - Category: Cooking
+   - Priority: High
+   - Due: Daily 7 AM
+   - Assign to: Sarah
+
+EXAMPLE 3: Maintenance Tasks
+-----------------------------
+1. Create task "Change HVAC filter"
+   - Category: Maintenance
+   - Priority: Medium
+   - Due: First of month
+   - Assign to: Homeowner
+
+2. Create task "Check smoke detectors"
+   - Category: Maintenance
+   - Priority: High
+   - Due: Monthly
+   - Assign to: Anyone
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ISSUE: Tasks not appearing
+SOLUTION:
+- Check household filter
+- Verify task was saved
+- Refresh the page
+- Check Firebase sync status
+
+ISSUE: Cannot complete task
+SOLUTION:
+- Verify you have permission
+- Check internet connection
+- Try refreshing page
+- Check browser console
+
+ISSUE: Task assignments not working
+SOLUTION:
+- Verify household members exist
+- Check member permissions
+- Ensure valid user IDs
+- Refresh member list
+
+================================================================================
+END OF MODULE 4 DOCUMENTATION
+================================================================================

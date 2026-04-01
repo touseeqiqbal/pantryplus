@@ -1,0 +1,488 @@
+================================================================================
+MODULE 1: AUTHENTICATION & HOUSEHOLD MANAGEMENT SYSTEM
+================================================================================
+PantryPlus - Comprehensive Household Management Application
+Last Updated: December 27, 2025
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Overview
+2. Authentication System
+3. Household Management System
+4. File Structure
+5. Technical Implementation
+6. Data Models
+7. User Workflows
+8. Security & Permissions
+9. Dependencies
+10. Future Enhancements
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The Authentication & Household Management module provides secure user 
+authentication and multi-user household management capabilities. This module
+serves as the foundation for all user interactions and data isolation within
+the PantryPlus application.
+
+KEY FEATURES:
+- Firebase Authentication (Email/Password, Google OAuth)
+- Multi-user household creation and management
+- Role-based permissions (Owner, Admin, Member)
+- Household invitation system
+- Member management
+- Household settings configuration
+
+================================================================================
+2. AUTHENTICATION SYSTEM
+================================================================================
+
+2.1 AUTHENTICATION METHODS
+---------------------------
+- Email/Password Authentication
+- Google OAuth Integration
+- Persistent Sessions
+- Automatic Token Refresh
+
+2.2 AUTHENTICATION PAGES
+-------------------------
+
+Sign In Page (app/auth/signin/page.tsx)
+- Email/password login form
+- Google sign-in button
+- Error handling and validation
+- Redirect to dashboard on success
+- Link to sign-up page
+
+Sign Up Page (app/auth/signup/page.tsx)
+- New user registration
+- Email/password creation
+- Google OAuth registration
+- Automatic household creation for new users
+- Redirect to household setup
+
+2.3 AUTHENTICATION HOOK (lib/hooks/useAuth.tsx)
+------------------------------------------------
+Context Provider: AuthProvider
+Exported Functions:
+- signUp(email, password): Create new account
+- signIn(email, password): Login with credentials
+- signInWithGoogle(): OAuth login
+- signOut(): Logout user
+
+State Management:
+- user: Current authenticated user object
+- loading: Authentication status loading state
+
+================================================================================
+3. HOUSEHOLD MANAGEMENT SYSTEM
+================================================================================
+
+3.1 HOUSEHOLD FEATURES
+-----------------------
+- Create new households
+- Join existing households via invitation
+- Switch between multiple households
+- Manage household members
+- Configure household settings
+- Leave household (non-owners)
+
+3.2 HOUSEHOLD PAGES
+-------------------
+
+Setup Page (app/household/setup/page.tsx)
+PURPOSE: First-time household creation for new users
+FEATURES:
+- Household name input
+- Automatic owner assignment
+- Default settings configuration
+- Redirect to dashboard after creation
+
+Join Page (app/household/join/page.tsx)
+PURPOSE: Accept or decline household invitations
+FEATURES:
+- List pending invitations
+- View invitation details (household name, inviter, expiry)
+- Accept invitation button
+- Decline invitation button
+- Automatic household joining
+
+Settings Page (app/household/settings/page.tsx)
+PURPOSE: Configure household preferences
+FEATURES:
+- Currency selection (USD, EUR, GBP, JPY, CAD, AUD, INR)
+- Timezone configuration
+- Notification preferences
+- Save settings functionality
+- Link to member management
+
+Members Page (app/household/members/page.tsx)
+PURPOSE: Manage household members
+FEATURES:
+- View all household members
+- Display member roles (Owner, Admin, Member)
+- Invite new members via email
+- Remove members (Owner/Admin only)
+- Leave household option
+- Role-based UI permissions
+
+3.3 HOUSEHOLD HOOK (lib/hooks/useHousehold.tsx)
+------------------------------------------------
+Context Provider: HouseholdProvider
+Exported Functions:
+- createHousehold(name, settings): Create new household
+- switchHousehold(householdId): Change active household
+- inviteMember(email): Send invitation
+- removeMember(userId): Remove member
+- updateHouseholdSettings(settings): Update preferences
+- acceptInvitation(invitationId): Accept invite
+- declineInvitation(invitationId): Decline invite
+- leaveHousehold(): Leave current household
+
+State Management:
+- currentHousehold: Active household object
+- households: Array of user's households
+- invitations: Pending invitations
+- loading: Loading state
+
+================================================================================
+4. FILE STRUCTURE
+================================================================================
+
+app/
+├── auth/
+│   ├── signin/
+│   │   └── page.tsx                 # Sign-in page
+│   └── signup/
+│       └── page.tsx                 # Sign-up page
+│
+├── household/
+│   ├── setup/
+│   │   └── page.tsx                 # First-time household setup
+│   ├── join/
+│   │   └── page.tsx                 # Join household via invitation
+│   ├── settings/
+│   │   └── page.tsx                 # Household settings
+│   └── members/
+│       └── page.tsx                 # Member management
+
+lib/
+├── hooks/
+│   ├── useAuth.tsx                  # Authentication hook
+│   └── useHousehold.tsx             # Household management hook
+│
+├── firebase/
+│   └── config.ts                    # Firebase configuration
+│
+└── db/
+    └── dexie.ts                     # Database schema (includes Household)
+
+================================================================================
+5. TECHNICAL IMPLEMENTATION
+================================================================================
+
+5.1 AUTHENTICATION FLOW
+------------------------
+1. User enters credentials
+2. Firebase Authentication validates
+3. User object stored in context
+4. Session persisted in browser
+5. Redirect to appropriate page
+
+5.2 HOUSEHOLD CREATION FLOW
+----------------------------
+1. New user signs up
+2. Redirected to household setup
+3. User enters household name
+4. Household created in Firebase
+5. User assigned as Owner
+6. Default settings applied
+7. Household synced to IndexedDB
+8. Redirect to dashboard
+
+5.3 INVITATION FLOW
+--------------------
+1. Owner/Admin enters member email
+2. Invitation created in Firebase
+3. Invitation sent (email notification - future)
+4. Invitee sees invitation in join page
+5. Invitee accepts/declines
+6. If accepted, added to household members
+7. Invitation status updated
+
+5.4 DATA SYNCHRONIZATION
+-------------------------
+- Real-time Firebase listeners
+- Local IndexedDB caching
+- Offline-first architecture
+- Automatic conflict resolution
+
+================================================================================
+6. DATA MODELS
+================================================================================
+
+6.1 USER OBJECT (Firebase Auth)
+--------------------------------
+{
+  uid: string
+  email: string
+  displayName: string | null
+  photoURL: string | null
+  emailVerified: boolean
+}
+
+6.2 HOUSEHOLD OBJECT
+--------------------
+{
+  id?: number
+  firebaseId?: string
+  name: string
+  createdBy: string
+  createdAt: string
+  members: HouseholdMember[]
+  settings: {
+    currency: string
+    timezone: string
+    notifications: boolean
+  }
+  syncStatus: 'synced' | 'pending' | 'error'
+}
+
+6.3 HOUSEHOLD MEMBER OBJECT
+----------------------------
+{
+  userId: string
+  email: string
+  role: 'owner' | 'admin' | 'member'
+  joinedAt: string
+}
+
+6.4 INVITATION OBJECT
+---------------------
+{
+  id?: number
+  firebaseId?: string
+  householdId: string
+  householdName: string
+  invitedBy: string
+  invitedEmail: string
+  status: 'pending' | 'accepted' | 'declined' | 'expired'
+  createdAt: string
+  expiresAt: string
+  syncStatus: 'synced' | 'pending' | 'error'
+}
+
+================================================================================
+7. USER WORKFLOWS
+================================================================================
+
+7.1 NEW USER REGISTRATION
+--------------------------
+1. Navigate to /auth/signup
+2. Enter email and password OR click Google sign-in
+3. Account created
+4. Redirected to /household/setup
+5. Create first household
+6. Redirected to /dashboard
+
+7.2 EXISTING USER LOGIN
+------------------------
+1. Navigate to /auth/signin
+2. Enter credentials OR use Google
+3. Authentication validated
+4. Load user's households
+5. Set current household (last used or first)
+6. Redirected to /dashboard
+
+7.3 INVITING HOUSEHOLD MEMBERS
+-------------------------------
+1. Navigate to /household/members
+2. Click "Invite Member"
+3. Enter member's email
+4. Invitation created
+5. Invitee receives notification (future)
+6. Invitee accepts via /household/join
+7. Member added to household
+
+7.4 SWITCHING HOUSEHOLDS
+-------------------------
+1. User belongs to multiple households
+2. Select household from dropdown (future)
+3. Current household updated
+4. All data filtered by new household
+5. Dashboard refreshed
+
+================================================================================
+8. SECURITY & PERMISSIONS
+================================================================================
+
+8.1 AUTHENTICATION SECURITY
+----------------------------
+- Firebase Authentication handles security
+- HTTPS-only communication
+- Secure token storage
+- Automatic session refresh
+- Protected routes
+
+8.2 ROLE-BASED PERMISSIONS
+---------------------------
+
+OWNER:
+- Full household control
+- Invite/remove members
+- Delete household
+- Transfer ownership
+- Update all settings
+
+ADMIN:
+- Invite/remove members (except owner)
+- Update household settings
+- Manage household data
+- Cannot delete household
+
+MEMBER:
+- View household data
+- Add/edit own contributions
+- Leave household
+- Limited settings access
+
+8.3 DATA ISOLATION
+-------------------
+- All data filtered by householdId
+- Firebase security rules enforce isolation
+- Users can only access their households
+- Invitations validated before acceptance
+
+================================================================================
+9. DEPENDENCIES
+================================================================================
+
+CORE DEPENDENCIES:
+- next: ^14.x (React framework)
+- react: ^18.x
+- typescript: ^5.x
+- firebase: ^10.x (Authentication & Firestore)
+- dexie: ^3.x (IndexedDB wrapper)
+- framer-motion: ^10.x (Animations)
+
+AUTHENTICATION:
+- Firebase Authentication SDK
+- Firebase Firestore SDK
+
+UTILITIES:
+- React Context API
+- Next.js App Router
+- TypeScript for type safety
+
+================================================================================
+10. FUTURE ENHANCEMENTS
+================================================================================
+
+10.1 AUTHENTICATION IMPROVEMENTS
+---------------------------------
+- [ ] Two-factor authentication (2FA)
+- [ ] Biometric authentication
+- [ ] Social login (Facebook, Apple)
+- [ ] Password reset flow
+- [ ] Email verification requirement
+- [ ] Account recovery options
+
+10.2 HOUSEHOLD ENHANCEMENTS
+----------------------------
+- [ ] Household profiles with images
+- [ ] Custom household roles
+- [ ] Household activity feed
+- [ ] Member activity tracking
+- [ ] Household statistics dashboard
+- [ ] Data export per household
+
+10.3 INVITATION IMPROVEMENTS
+-----------------------------
+- [ ] Email notifications for invitations
+- [ ] SMS invitation option
+- [ ] Invitation links (shareable URLs)
+- [ ] Bulk member invitations
+- [ ] Invitation templates
+- [ ] Automatic invitation expiry cleanup
+
+10.4 ADVANCED FEATURES
+----------------------
+- [ ] Household transfer between owners
+- [ ] Merge households
+- [ ] Archive households
+- [ ] Household backup/restore
+- [ ] Multi-language support
+- [ ] Accessibility improvements
+
+================================================================================
+USAGE EXAMPLES
+================================================================================
+
+EXAMPLE 1: User Sign Up
+-----------------------
+1. User navigates to /auth/signup
+2. Enters email: user@example.com, password: securePass123
+3. Clicks "Sign Up"
+4. Account created, redirected to /household/setup
+5. Enters household name: "Smith Family"
+6. Clicks "Create Household"
+7. Redirected to /dashboard
+
+EXAMPLE 2: Inviting a Family Member
+------------------------------------
+1. Owner navigates to /household/members
+2. Clicks "Invite Member"
+3. Enters email: spouse@example.com
+4. Clicks "Send Invitation"
+5. Invitation created with 7-day expiry
+6. Spouse receives notification
+7. Spouse logs in, sees invitation at /household/join
+8. Spouse clicks "Accept"
+9. Spouse added as Member to household
+
+EXAMPLE 3: Switching Households
+--------------------------------
+1. User belongs to "Smith Family" and "Work Team"
+2. Currently viewing "Smith Family" data
+3. Clicks household selector (future feature)
+4. Selects "Work Team"
+5. All inventory, tasks, expenses switch to "Work Team"
+6. Dashboard updates with "Work Team" data
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ISSUE: Cannot sign in
+SOLUTION: 
+- Verify email/password are correct
+- Check internet connection
+- Clear browser cache
+- Try password reset (future feature)
+
+ISSUE: Household not appearing
+SOLUTION:
+- Refresh the page
+- Check if invitation was accepted
+- Verify Firebase connection
+- Check browser console for errors
+
+ISSUE: Cannot invite members
+SOLUTION:
+- Verify you have Owner or Admin role
+- Check email format is valid
+- Ensure member doesn't already exist
+- Check Firebase quota limits
+
+ISSUE: Data not syncing
+SOLUTION:
+- Check internet connection
+- Verify Firebase configuration
+- Check browser IndexedDB storage
+- Clear local storage and re-login
+
+================================================================================
+END OF MODULE 1 DOCUMENTATION
+================================================================================

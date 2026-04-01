@@ -1,0 +1,145 @@
+================================================================================
+MODULE 10: PWA, OFFLINE ARCHITECTURE & PERFORMANCE
+================================================================================
+PantryPlus - Comprehensive Household Management Application
+Last Updated: April 1, 2026
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Overview
+2. Progressive Web App (PWA) Features
+3. Offline Architecture
+4. Data Synchronization
+5. Performance Optimization
+6. Technical Implementation
+7. User Workflows
+8. Performance Metrics
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The PWA, Offline Architecture & Performance module is the foundation of the
+PantryPlus user experience. It ensures the application is fast, reliable, and
+functional regardless of the user's internet connection. This module leverages
+modern browser technologies like Service Workers and IndexedDB to provide a
+native-app-like experience in the web.
+
+KEY FEATURES:
+- Offline-first data management
+- Background sync to Firebase
+- Service worker caching
+- Installable web app (Home screen support)
+- Real-time connection monitoring
+- Bundle optimization
+
+================================================================================
+2. PROGRESSIVE WEB APP (PWA) FEATURES
+================================================================================
+
+PantryPlus is fully installable on mobile and desktop devices.
+
+FEATURES:
+- Web App Manifest: Defines the app's name, icons, and theme colors.
+- App Shell Caching: Instant loading by caching UI elements (Header, Nav, etc.).
+- Install Prompt: Automatically shows after 30 seconds of usage to encourage
+  native installation.
+- Splash Screen Support: Seamless transition during app launch.
+
+FILES:
+- `public/manifest.json`
+- `app/components/PWAInstallPrompt.tsx`
+
+================================================================================
+3. OFFLINE ARCHITECTURE
+================================================================================
+
+The "Offline-First" approach means the app uses the local database as the primary
+source of truth.
+
+LOCAL DATABASE:
+Uses Dexie.js (a wrapper for IndexedDB) to store all inventory, shopping,
+and meal planning data locally on the device.
+
+COMPONENTS:
+- Offline Indicator: A smooth slide-in notification that appears when the
+  connection is lost.
+- Local Storage: High-performance caching for user preferences and session data.
+
+================================================================================
+4. DATA SYNCHRONIZATION
+================================================================================
+
+Seamless background synchronization between local storage and Firebase Cloud.
+
+WRITE FLOW:
+1. User action (e.g., adding an item) updates IndexedDB instantly.
+2. Background sync task checks for connectivity.
+3. Once online, changes are pushed to Firestore.
+4. Sync status is updated to 'synced' in the UI.
+
+READ FLOW:
+1. App loads from IndexedDB (0ms latency).
+2. Firestore snapshot listener fetches updates in the background.
+3. Conflicts are resolved using a "Last-Write-Wins" policy.
+
+================================================================================
+5. PERFORMANCE OPTIMIZATION
+================================================================================
+
+PantryPlus is optimized for low-end mobile devices and flaky connections.
+
+STRATEGIES:
+- Code Splitting: Using Next.js dynamic imports to only load required code.
+- Image Optimization: Next/Image components for automatic resizing and format
+  selection.
+- Font Preloading: Standardized fonts (Inter) are preloaded to avoid layout shift.
+- Bundle Analysis: Regular audits to keep the bundle size under 400KB.
+
+================================================================================
+6. TECHNICAL IMPLEMENTATION
+================================================================================
+
+6.1 SERVICE WORKER (next-pwa)
+-----------------------------
+Automatically handles caching strategies for different resource types.
+- Stale-While-Revalidate: For UI assets.
+- Cache-First: For static fonts and icons.
+- Network-First: For highly dynamic API endpoints.
+
+6.2 DEXIE SYNC SERVICE (lib/db/dexie.ts)
+----------------------------------------
+Configures the local database schema and synchronization hooks.
+
+================================================================================
+7. USER WORKFLOWS
+================================================================================
+
+7.1 INSTALLING THE APP
+----------------------
+1. Visit PantryPlus in a mobile browser
+2. Use for 30 seconds
+3. Click "Install App" in the popup banner
+4. App appears on the home screen with its own icon
+
+7.2 ADDING AN ITEM WHILE OFFLINE
+--------------------------------
+1. Turn off Wi-Fi/Data
+2. Open /inventory and add "Bread"
+3. The item appears instantly with a "Pending Sync" icon
+4. Turn on Wi-Fi
+5. The icon changes to "Synced" as bread moves to the cloud
+
+================================================================================
+8. PERFORMANCE METRICS
+================================================================================
+
+- First Contentful Paint: < 1.5s
+- Time to Interactive: < 2.5s
+- Lighthouse PWA Score: 100/100
+- Bundle Size (Shared): 87.3 kB
+
+================================================================================
+END OF MODULE 10 DOCUMENTATION
+================================================================================

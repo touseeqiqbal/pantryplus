@@ -1,0 +1,527 @@
+================================================================================
+MODULE 6: INVENTORY, SHOPPING & SHARED COMPONENTS
+================================================================================
+PantryPlus - Comprehensive Household Management Application
+Last Updated: December 27, 2025
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Overview
+2. Inventory Management
+3. Shopping List Management
+4. Shared Components
+5. File Structure
+6. Technical Implementation
+7. Data Models
+8. User Workflows
+9. Dependencies
+10. Future Enhancements
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The Inventory, Shopping & Shared Components module provides core functionality
+for managing pantry inventory, creating shopping lists, and reusable UI
+components used throughout the application. This module includes barcode
+scanning, expiry tracking, and household-based data management.
+
+KEY FEATURES:
+- Pantry inventory tracking
+- Barcode scanning
+- Expiry date monitoring
+- Shopping list management
+- Shared UI components
+- Household-based filtering
+- Offline-first architecture
+
+================================================================================
+2. INVENTORY MANAGEMENT
+================================================================================
+
+2.1 INVENTORY FEATURES
+----------------------
+- Add/edit/delete items
+- Barcode scanning
+- Category organization
+- Quantity tracking
+- Expiry date monitoring
+- Location tracking
+- Search and filter
+- Household sharing
+
+2.2 INVENTORY PAGE (app/inventory/page.tsx)
+--------------------------------------------
+
+FEATURES:
+- Item grid/list view
+- Add item modal
+- Edit item modal
+- Barcode scanner integration
+- Search functionality
+- Category filter
+- Expiry indicators
+- Delete confirmation
+
+ITEM PROPERTIES:
+- Name (required)
+- Category (required)
+- Quantity (required)
+- Unit (required)
+- Expiry date (optional)
+- Barcode (optional)
+- Location (optional)
+- Notes (optional)
+
+2.3 INVENTORY HOOK (lib/hooks/useInventory.ts)
+-----------------------------------------------
+
+EXPORTED FUNCTIONS:
+- addItem(item): Create new inventory item
+- updateItem(id, updates): Update existing item
+- deleteItem(id): Remove item
+
+STATE:
+- items: Array of inventory items (filtered by household)
+- loading: Loading state
+
+HOUSEHOLD FILTERING:
+- All items filtered by currentHousehold.firebaseId
+- Automatic household context
+- Shared inventory across household members
+
+================================================================================
+3. SHOPPING LIST MANAGEMENT
+================================================================================
+
+3.1 SHOPPING FEATURES
+---------------------
+- Add/edit/delete items
+- Mark as purchased
+- Category organization
+- Quantity tracking
+- To buy / Purchased sections
+- Household sharing
+- Quick add functionality
+
+3.2 SHOPPING PAGE (app/shopping/page.tsx)
+------------------------------------------
+
+FEATURES:
+- Divided sections (To Buy / Purchased)
+- Add item modal
+- Toggle purchased status
+- Delete items
+- Category badges
+- Quantity display
+- Added by tracking
+
+ITEM PROPERTIES:
+- Name (required)
+- Quantity (required)
+- Unit (required)
+- Category (optional)
+- Purchased (boolean)
+- Added by (auto-assigned)
+
+3.3 SHOPPING HOOK (lib/hooks/useShopping.ts)
+---------------------------------------------
+
+EXPORTED FUNCTIONS:
+- addItem(item): Create shopping item
+- updateItem(id, updates): Update item
+- deleteItem(id): Remove item
+
+STATE:
+- items: Array of shopping items (filtered by household)
+- loading: Loading state
+
+HOUSEHOLD FILTERING:
+- All items filtered by currentHousehold.firebaseId
+- Shared shopping lists
+- Track who added items
+
+================================================================================
+4. SHARED COMPONENTS
+================================================================================
+
+4.1 BARCODE SCANNER (app/components/BarcodeScanner.tsx)
+--------------------------------------------------------
+
+PURPOSE: Scan barcodes to quickly add inventory items
+
+FEATURES:
+- Live camera feed
+- Real-time barcode detection
+- Scanning overlay animation
+- Success callback
+- Close functionality
+
+TECHNOLOGY:
+- react-webcam for camera access
+- @zxing/library for barcode decoding
+- Continuous frame capture (500ms interval)
+- Multiple barcode format support
+
+USAGE:
+```typescript
+<BarcodeScanner
+  onScan={(barcode) => handleBarcodeScanned(barcode)}
+  onClose={() => setShowScanner(false)}
+/>
+```
+
+4.2 EXPIRY NOTIFICATIONS (app/components/ExpiryNotifications.tsx)
+------------------------------------------------------------------
+
+PURPOSE: Alert users about expiring and expired items
+
+FEATURES:
+- Expiring soon alerts (within 7 days)
+- Expired item warnings
+- Color-coded urgency
+- Dismissible notifications
+- Top 5 most urgent items
+
+LOGIC:
+```typescript
+const expiringItems = items.filter(item => {
+  if (!item.expiryDate) return false;
+  const daysUntilExpiry = Math.floor(
+    (new Date(item.expiryDate).getTime() - new Date().getTime()) 
+    / (1000 * 60 * 60 * 24)
+  );
+  return daysUntilExpiry <= 7 && daysUntilExpiry >= 0;
+});
+```
+
+4.3 THEME TOGGLE (app/components/ThemeToggle.tsx)
+--------------------------------------------------
+
+PURPOSE: Switch between light and dark modes
+
+FEATURES:
+- Sun/moon icon toggle
+- Smooth transitions
+- LocalStorage persistence
+- System preference detection
+
+IMPLEMENTATION:
+- Uses next-themes package
+- Applies dark class to HTML
+- CSS variables for colors
+
+4.4 THEME PROVIDER (app/components/ThemeProvider.tsx)
+------------------------------------------------------
+
+PURPOSE: Provide theme context to entire app
+
+FEATURES:
+- Theme state management
+- System preference detection
+- Theme persistence
+- Theme switching
+
+================================================================================
+5. FILE STRUCTURE
+================================================================================
+
+app/
+├── inventory/
+│   └── page.tsx                     # Inventory management page
+│
+├── shopping/
+│   └── page.tsx                     # Shopping list page
+│
+└── components/
+    ├── BarcodeScanner.tsx           # Barcode scanning component
+    ├── ExpiryNotifications.tsx      # Expiry alerts component
+    ├── ThemeToggle.tsx              # Dark mode toggle
+    └── ThemeProvider.tsx            # Theme context provider
+
+lib/
+├── hooks/
+│   ├── useInventory.ts              # Inventory management hook
+│   └── useShopping.ts               # Shopping list hook
+│
+├── db/
+│   └── dexie.ts                     # Database schema
+│
+└── firebase/
+    └── config.ts                    # Firebase configuration
+
+================================================================================
+6. TECHNICAL IMPLEMENTATION
+================================================================================
+
+6.1 DATA SYNCHRONIZATION
+-------------------------
+
+WRITE FLOW:
+1. User action (add/edit/delete)
+2. Update IndexedDB immediately (optimistic update)
+3. Sync to Firebase in background
+4. Update sync status (synced/pending/error)
+
+READ FLOW:
+1. Load from IndexedDB on mount (instant)
+2. Subscribe to Firebase real-time updates
+3. Merge Firebase changes into local cache
+4. Re-render with updated data
+
+OFFLINE SUPPORT:
+- Full CRUD operations work offline
+- Changes queued for sync when online
+- Automatic retry on connection restore
+- Sync status indicators
+
+6.2 HOUSEHOLD CONTEXT
+---------------------
+
+All inventory and shopping data is filtered by household:
+
+```typescript
+const { currentHousehold } = useHousehold();
+
+const localItems = await db.inventory
+  .where('householdId')
+  .equals(currentHousehold.firebaseId || '')
+  .toArray();
+```
+
+BENEFITS:
+- Data isolation between households
+- Shared inventory within household
+- Multi-household support per user
+- Automatic filtering
+
+6.3 BARCODE SCANNING IMPLEMENTATION
+------------------------------------
+
+```typescript
+const capture = useCallback(() => {
+  const imageSrc = webcamRef.current?.getScreenshot();
+  if (imageSrc) {
+    codeReader.current
+      .decodeFromImage(undefined, imageSrc)
+      .then((result) => {
+        if (result) {
+          onScan(result.getText());
+        }
+      })
+      .catch((err) => {
+        if (!(err instanceof NotFoundException)) {
+          console.error(err);
+        }
+      });
+  }
+}, [onScan]);
+
+useEffect(() => {
+  const interval = setInterval(capture, 500);
+  return () => clearInterval(interval);
+}, [capture]);
+```
+
+================================================================================
+7. DATA MODELS
+================================================================================
+
+7.1 INVENTORY ITEM
+------------------
+{
+  id?: number
+  firebaseId?: string
+  householdId: string                 # NEW: Household filter
+  name: string
+  category: string
+  quantity: number
+  unit: string
+  expiryDate?: string
+  barcode?: string
+  location?: string
+  notes?: string
+  imageUrl?: string
+  createdAt: string
+  updatedAt: string
+  syncStatus: 'synced' | 'pending' | 'error'
+}
+
+7.2 SHOPPING ITEM
+-----------------
+{
+  id?: number
+  firebaseId?: string
+  householdId: string                 # NEW: Household filter
+  name: string
+  quantity: number
+  unit: string
+  category?: string
+  purchased: boolean
+  addedBy?: string                    # NEW: Track who added
+  createdAt: string
+  updatedAt: string
+  syncStatus: 'synced' | 'pending' | 'error'
+}
+
+================================================================================
+8. USER WORKFLOWS
+================================================================================
+
+8.1 ADDING INVENTORY ITEM
+--------------------------
+1. Navigate to /inventory
+2. Click "+ Add Item"
+3. Enter item name
+4. Select category
+5. Enter quantity and unit
+6. Optionally set expiry date
+7. Optionally scan barcode
+8. Save item
+9. Item appears in inventory
+
+8.2 SCANNING BARCODE
+--------------------
+1. Navigate to /inventory
+2. Click "Scan Barcode" or use ?scan=true
+3. Allow camera access
+4. Point camera at barcode
+5. Barcode automatically detected
+6. Barcode number populated in form
+7. Complete item details
+8. Save item
+
+8.3 CREATING SHOPPING LIST
+---------------------------
+1. Navigate to /shopping
+2. Click "+ Add Item"
+3. Enter item name
+4. Set quantity and unit
+5. Optionally select category
+6. Save item
+7. Item appears in "To Buy" section
+
+8.4 SHOPPING WORKFLOW
+---------------------
+1. Create shopping list at home
+2. Go to store
+3. Open /shopping on phone
+4. Check items as purchased
+5. Items move to "Purchased" section
+6. After shopping, add purchased items to inventory
+7. Clear purchased items from list
+
+================================================================================
+9. DEPENDENCIES
+================================================================================
+
+CORE DEPENDENCIES:
+- next: ^14.x
+- react: ^18.x
+- typescript: ^5.x
+- framer-motion: ^10.x
+- dexie: ^3.x
+- firebase: ^10.x
+
+BARCODE SCANNING:
+- react-webcam: ^7.x
+- @zxing/library: ^0.19.x
+
+THEME:
+- next-themes: ^0.2.x
+
+CUSTOM HOOKS:
+- useAuth
+- useHousehold
+- useInventory
+- useShopping
+
+================================================================================
+10. FUTURE ENHANCEMENTS
+================================================================================
+
+10.1 INVENTORY ENHANCEMENTS
+---------------------------
+- [ ] Bulk import/export
+- [ ] Item photos
+- [ ] Nutrition information
+- [ ] Price tracking
+- [ ] Inventory analytics
+- [ ] Low stock alerts
+- [ ] Automatic reordering
+
+10.2 SHOPPING ENHANCEMENTS
+--------------------------
+- [ ] Smart shopping lists (AI suggestions)
+- [ ] Store layout optimization
+- [ ] Price comparison
+- [ ] Coupon integration
+- [ ] Recipe-based shopping lists
+- [ ] Shared list collaboration
+- [ ] Shopping history
+
+10.3 BARCODE ENHANCEMENTS
+-------------------------
+- [ ] Product database integration
+- [ ] Auto-fill item details from barcode
+- [ ] Nutrition data from barcode
+- [ ] Price lookup
+- [ ] Alternative products
+- [ ] Barcode history
+
+10.4 COMPONENT ENHANCEMENTS
+---------------------------
+- [ ] Advanced search with filters
+- [ ] Bulk operations
+- [ ] Item templates
+- [ ] Custom categories
+- [ ] Item tags
+- [ ] Favorites/frequently used
+
+================================================================================
+USAGE EXAMPLES
+================================================================================
+
+EXAMPLE 1: Adding Milk to Inventory
+------------------------------------
+1. Open /inventory
+2. Click "+ Add Item"
+3. Name: "Milk"
+4. Category: "Dairy"
+5. Quantity: 1
+6. Unit: "gallon"
+7. Expiry: 7 days from now
+8. Location: "Refrigerator"
+9. Save
+10. Milk appears in inventory
+
+EXAMPLE 2: Weekly Shopping List
+--------------------------------
+1. Review inventory
+2. Note missing items
+3. Open /shopping
+4. Add: Bread, Eggs, Milk, Cheese
+5. Set quantities
+6. Go shopping
+7. Mark items as purchased
+8. Return home
+9. Add purchased items to inventory
+10. Clear shopping list
+
+EXAMPLE 3: Barcode Scanning
+----------------------------
+1. Open /inventory?scan=true
+2. Camera activates
+3. Scan cereal box barcode
+4. Barcode: 012345678901
+5. Enter name: "Cheerios"
+6. Category: "Breakfast"
+7. Quantity: 1
+8. Unit: "box"
+9. Save
+10. Item added with barcode
+
+================================================================================
+END OF MODULE 6 DOCUMENTATION
+================================================================================

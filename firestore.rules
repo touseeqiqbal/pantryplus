@@ -1,0 +1,293 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================================================
+    // HELPER FUNCTIONS
+    // ============================================================================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is a member of the household
+    function isHouseholdMember(householdId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/households/$(householdId)) &&
+        get(/databases/$(database)/documents/households/$(householdId))
+          .data.memberIds.hasAny([request.auth.uid]);
+    }
+    
+    // Check if user is household owner or admin
+    // Currently simplifying to owner only since members is an array of objects
+    function isHouseholdAdmin(householdId) {
+      return isHouseholdOwner(householdId);
+    }
+    
+    // Check if user is household owner
+    function isHouseholdOwner(householdId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/households/$(householdId)) &&
+        get(/databases/$(database)/documents/households/$(householdId))
+          .data.createdBy == request.auth.uid;
+    }
+    
+    // Validate household data structure
+    function isValidHousehold() {
+      return request.resource.data.keys().hasAll(['name', 'createdBy', 'createdAt', 'members', 'memberIds', 'settings']) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 100 &&
+        request.resource.data.createdBy is string &&
+        request.resource.data.members is list &&
+        request.resource.data.memberIds is list;
+    }
+    
+    // ============================================================================
+    // HOUSEHOLDS
+    // ============================================================================
+    
+    match /households/{householdId} {
+      // Anyone authenticated can read households they're a member of
+      allow read: if isAuthenticated() && isHouseholdMember(householdId);
+      
+      // Anyone authenticated can create a household
+      allow create: if isAuthenticated() &&
+        isValidHousehold() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.memberIds.hasAny([request.auth.uid]);
+      
+      // Only admins can update household settings
+      allow update: if isAuthenticated() &&
+        isHouseholdAdmin(householdId) &&
+        // Prevent changing the owner
+        request.resource.data.createdBy == resource.data.createdBy;
+      
+      // Only owner can delete household
+      allow delete: if isAuthenticated() && isHouseholdOwner(householdId);
+    }
+    
+    // ============================================================================
+    // INVITATIONS
+    // ============================================================================
+    
+    match /invitations/{invitationId} {
+      // Users can read invitations sent to their email
+      allow read: if isAuthenticated() &&
+        (resource.data.invitedEmail == request.auth.token.email ||
+         isHouseholdMember(resource.data.householdId));
+      
+      // Only household admins can create invitations
+      allow create: if isAuthenticated() &&
+        isHouseholdAdmin(request.resource.data.householdId) &&
+        request.resource.data.invitedBy == request.auth.uid;
+      
+      // Users can update invitations sent to them (accept/decline)
+      allow update: if isAuthenticated() &&
+        resource.data.invitedEmail == request.auth.token.email;
+      
+      // Only household admins can delete invitations
+      allow delete: if isAuthenticated() &&
+        isHouseholdAdmin(resource.data.householdId);
+    }
+    
+    // ============================================================================
+    // INVENTORY
+    // ============================================================================
+    
+    match /inventory/{itemId} {
+      // Read: Any household member
+      allow read: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+      
+      // Create: Any household member, must include householdId
+      allow create: if isAuthenticated() &&
+        isHouseholdMember(request.resource.data.householdId) &&
+        request.resource.data.keys().hasAll(['householdId', 'name', 'category', 'quantity', 'unit']) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 100 &&
+        request.resource.data.quantity is number &&
+        request.resource.data.quantity >= 0;
+      
+      // Update: Any household member
+      allow update: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId) &&
+        // Prevent changing householdId
+        request.resource.data.householdId == resource.data.householdId;
+      
+      // Delete: Any household member
+      allow delete: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+    }
+    
+    // ============================================================================
+    // SHOPPING
+    // ============================================================================
+    
+    match /shopping/{itemId} {
+      allow read: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+      
+      allow create: if isAuthenticated() &&
+        isHouseholdMember(request.resource.data.householdId) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0;
+      
+      allow update: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId) &&
+        request.resource.data.householdId == resource.data.householdId;
+      
+      allow delete: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+    }
+    
+    // ============================================================================
+    // RECIPES
+    // ============================================================================
+    
+    match /recipes/{recipeId} {
+      allow read: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+      
+      allow create: if isAuthenticated() &&
+        isHouseholdMember(request.resource.data.householdId) &&
+        request.resource.data.name is string &&
+        request.resource.data.ingredients is list;
+      
+      allow update: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId) &&
+        request.resource.data.householdId == resource.data.householdId;
+      
+      allow delete: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+    }
+    
+    // ============================================================================
+    // MEALS (Meal Planning)
+    // ============================================================================
+    
+    match /meals/{mealId} {
+      allow read: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+      
+      allow create: if isAuthenticated() &&
+        isHouseholdMember(request.resource.data.householdId);
+      
+      allow update: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId) &&
+        request.resource.data.householdId == resource.data.householdId;
+      
+      allow delete: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+    }
+    
+    // ============================================================================
+    // TASKS
+    // ============================================================================
+    
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+      
+      allow create: if isAuthenticated() &&
+        isHouseholdMember(request.resource.data.householdId) &&
+        request.resource.data.title is string &&
+        request.resource.data.createdBy == request.auth.uid;
+      
+      allow update: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId) &&
+        request.resource.data.householdId == resource.data.householdId;
+      
+      allow delete: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+    }
+    
+    // ============================================================================
+    // EXPENSES
+    // ============================================================================
+    
+    match /expenses/{expenseId} {
+      allow read: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+      
+      allow create: if isAuthenticated() &&
+        isHouseholdMember(request.resource.data.householdId) &&
+        request.resource.data.amount is number &&
+        request.resource.data.amount >= 0 &&
+        request.resource.data.paidBy == request.auth.uid;
+      
+      allow update: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId) &&
+        request.resource.data.householdId == resource.data.householdId;
+      
+      allow delete: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+    }
+    
+    // ============================================================================
+    // BUDGETS
+    // ============================================================================
+    
+    match /budgets/{budgetId} {
+      allow read: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+      
+      // Only admins can create/update/delete budgets
+      allow create: if isAuthenticated() &&
+        isHouseholdAdmin(request.resource.data.householdId) &&
+        request.resource.data.amount is number &&
+        request.resource.data.amount >= 0;
+      
+      allow update: if isAuthenticated() &&
+        isHouseholdAdmin(resource.data.householdId) &&
+        request.resource.data.householdId == resource.data.householdId;
+      
+      allow delete: if isAuthenticated() &&
+        isHouseholdAdmin(resource.data.householdId);
+    }
+    
+    // ============================================================================
+    // NOTIFICATIONS
+    // ============================================================================
+    
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid;
+      
+      // System can create notifications (server-side only)
+      // Users can mark as read
+      allow update: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId;
+      
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // ============================================================================
+    // ACTIVITIES (Activity Log)
+    // ============================================================================
+    
+    match /activities/{activityId} {
+      // Anyone in the household can read activities
+      allow read: if isAuthenticated() &&
+        isHouseholdMember(resource.data.householdId);
+      
+      // System creates activities automatically (server-side)
+      // Users cannot directly create/update/delete activities
+      allow write: if false;
+    }
+    
+    // ============================================================================
+    // DENY ALL OTHER COLLECTIONS
+    // ============================================================================
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

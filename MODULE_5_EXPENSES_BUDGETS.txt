@@ -1,0 +1,471 @@
+================================================================================
+MODULE 5: EXPENSE TRACKING & BUDGET MANAGEMENT
+================================================================================
+PantryPlus - Comprehensive Household Management Application
+Last Updated: December 27, 2025
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Overview
+2. Expense Tracking Features
+3. Budget Management
+4. File Structure
+5. Technical Implementation
+6. Data Models
+7. User Workflows
+8. Expense Categories
+9. Dependencies
+10. Future Enhancements
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The Expense Tracking & Budget Management module enables households to track
+spending, manage budgets, and gain insights into financial patterns. This
+module helps optimize household spending and achieve financial goals.
+
+KEY FEATURES:
+- Expense entry and categorization
+- Multi-currency support
+- Budget creation and tracking
+- Summary cards (total, monthly, budgets)
+- Expense history
+- Category-based organization
+- Household expense sharing
+
+================================================================================
+2. EXPENSE TRACKING FEATURES
+================================================================================
+
+2.1 EXPENSE DASHBOARD
+---------------------
+- Summary cards (total expenses, monthly expenses, active budgets)
+- Recent expenses list
+- Add expense modal
+- Delete functionality
+- Category badges
+- Amount display
+
+2.2 EXPENSE ENTRY
+-----------------
+- Description (required)
+- Amount (required)
+- Currency selection
+- Category selection
+- Date picker
+- Paid by (auto-assigned to current user)
+- Receipt upload (future)
+- Tags (future)
+
+2.3 EXPENSE MANAGEMENT
+----------------------
+- View all household expenses
+- Filter by category
+- Filter by date range
+- Filter by payer
+- Delete expenses
+- Edit expenses (future)
+- Export expenses (future)
+
+================================================================================
+3. BUDGET MANAGEMENT
+================================================================================
+
+3.1 BUDGET FEATURES
+-------------------
+- Create category budgets
+- Set budget amounts
+- Define budget periods (weekly, monthly, yearly)
+- Budget alerts and thresholds
+- Budget vs actual tracking
+- Overspending warnings
+
+3.2 BUDGET TRACKING
+-------------------
+- Real-time budget status
+- Percentage spent
+- Remaining amount
+- Alert notifications
+- Category breakdown
+- Period-based tracking
+
+================================================================================
+4. FILE STRUCTURE
+================================================================================
+
+app/
+└── expenses/
+    └── page.tsx                     # Expense dashboard
+
+lib/
+├── hooks/
+│   └── useExpenses.ts               # Expense tracking hook
+│
+└── db/
+    └── dexie.ts                     # Database schema (Expense, Budget)
+
+================================================================================
+5. TECHNICAL IMPLEMENTATION
+================================================================================
+
+5.1 EXPENSES PAGE (app/expenses/page.tsx)
+------------------------------------------
+
+FEATURES:
+- Summary statistics cards
+- Expense list display
+- Add expense modal
+- Delete functionality
+- Category filtering
+- Date range filtering
+
+STATE MANAGEMENT:
+- showAddModal: Modal visibility
+- formData: New expense form state
+- expenses: Array of expenses
+- budgets: Array of budgets
+
+STATISTICS CALCULATION:
+```typescript
+const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+const monthlyExpenses = expenses.filter(exp => {
+  const expDate = new Date(exp.date);
+  const now = new Date();
+  return expDate.getMonth() === now.getMonth() && 
+         expDate.getFullYear() === now.getFullYear();
+}).reduce((sum, exp) => sum + exp.amount, 0);
+```
+
+EXPENSE FORM:
+- Description input
+- Amount input (number)
+- Currency dropdown
+- Category dropdown
+- Date picker
+- Submit/cancel buttons
+
+5.2 EXPENSES HOOK (lib/hooks/useExpenses.ts)
+---------------------------------------------
+
+EXPORTED FUNCTIONS:
+- addExpense(expense): Create new expense
+- updateExpense(id, updates): Update expense
+- deleteExpense(id): Remove expense
+- addBudget(budget): Create budget
+- updateBudget(id, updates): Update budget
+- deleteBudget(id): Remove budget
+- getExpenses(filters): Get filtered expenses
+- checkBudgetStatus(category, period): Check budget
+
+STATE:
+- expenses: Array of expenses
+- budgets: Array of budgets
+- loading: Loading state
+
+BUDGET STATUS CHECK:
+```typescript
+checkBudgetStatus(category, period) => {
+  budget: Budget
+  totalSpent: number
+  remaining: number
+  percentage: number
+  isOverBudget: boolean
+  shouldAlert: boolean
+}
+```
+
+SYNCHRONIZATION:
+- Real-time Firebase sync
+- Local IndexedDB caching
+- Household filtering
+- Offline support
+
+================================================================================
+6. DATA MODELS
+================================================================================
+
+6.1 EXPENSE OBJECT
+------------------
+{
+  id?: number
+  firebaseId?: string
+  householdId: string
+  amount: number
+  currency: string
+  category: 'groceries' | 'utilities' | 'household' | 'dining' | 'other'
+  description: string
+  date: string                        # ISO date string
+  paidBy: string                      # User ID
+  splitWith?: string[]                # User IDs (future)
+  receiptUrl?: string                 # Photo URL (future)
+  recurring?: boolean                 # Recurring expense (future)
+  tags?: string[]                     # Custom tags (future)
+  createdAt: string
+  updatedAt: string
+  syncStatus: 'synced' | 'pending' | 'error'
+}
+
+6.2 BUDGET OBJECT
+-----------------
+{
+  id?: number
+  firebaseId?: string
+  householdId: string
+  category: string
+  amount: number
+  period: 'weekly' | 'monthly' | 'yearly'
+  startDate: string
+  endDate?: string
+  alerts: {
+    threshold: number                 # Percentage (e.g., 80)
+    enabled: boolean
+  }
+  createdAt: string
+  updatedAt: string
+  syncStatus: 'synced' | 'pending' | 'error'
+}
+
+================================================================================
+7. USER WORKFLOWS
+================================================================================
+
+7.1 ADDING AN EXPENSE
+---------------------
+1. Navigate to /expenses
+2. Click "+ Add Expense"
+3. Enter description (e.g., "Weekly groceries")
+4. Enter amount (e.g., 150.00)
+5. Select currency (USD)
+6. Select category (groceries)
+7. Choose date (today)
+8. Click "Add Expense"
+9. Expense appears in list
+10. Summary cards update
+
+7.2 CREATING A BUDGET
+---------------------
+1. Navigate to /expenses (future: /expenses/budgets)
+2. Click "Create Budget"
+3. Select category (groceries)
+4. Enter amount (600)
+5. Select period (monthly)
+6. Set alert threshold (80%)
+7. Enable alerts
+8. Click "Create Budget"
+9. Budget tracked automatically
+
+7.3 MONITORING SPENDING
+-----------------------
+1. View expense dashboard
+2. Check summary cards:
+   - Total expenses: $1,250
+   - This month: $450
+   - Active budgets: 3
+3. Review recent expenses
+4. Check budget status
+5. Identify overspending categories
+6. Adjust spending habits
+
+7.4 TRACKING MONTHLY EXPENSES
+------------------------------
+1. View expenses for current month
+2. Group by category
+3. Compare to budgets
+4. Identify trends
+5. Plan next month's budget
+6. Adjust spending priorities
+
+================================================================================
+8. EXPENSE CATEGORIES
+================================================================================
+
+8.1 CATEGORY DEFINITIONS
+-------------------------
+
+GROCERIES:
+- Food shopping
+- Household supplies
+- Personal care items
+- Pet food
+- Typical budget: $400-800/month
+
+UTILITIES:
+- Electricity
+- Water
+- Gas
+- Internet
+- Phone bills
+- Typical budget: $200-400/month
+
+HOUSEHOLD:
+- Furniture
+- Appliances
+- Repairs
+- Maintenance
+- Cleaning supplies
+- Typical budget: $100-300/month
+
+DINING:
+- Restaurants
+- Takeout
+- Delivery
+- Coffee shops
+- Typical budget: $200-500/month
+
+OTHER:
+- Entertainment
+- Transportation
+- Healthcare
+- Miscellaneous
+- Variable budget
+
+8.2 CATEGORY COLORS
+-------------------
+- Groceries: Purple
+- Utilities: Blue
+- Household: Green
+- Dining: Orange
+- Other: Gray
+
+================================================================================
+9. DEPENDENCIES
+================================================================================
+
+CORE DEPENDENCIES:
+- next: ^14.x
+- react: ^18.x
+- typescript: ^5.x
+- framer-motion: ^10.x
+
+CUSTOM HOOKS:
+- useAuth
+- useHousehold
+- useExpenses
+
+DATABASE:
+- Firebase Firestore
+- Dexie.js (IndexedDB)
+
+================================================================================
+10. FUTURE ENHANCEMENTS
+================================================================================
+
+10.1 EXPENSE FEATURES
+---------------------
+- [ ] Receipt photo upload
+- [ ] OCR for receipt scanning
+- [ ] Expense splitting among members
+- [ ] Recurring expense automation
+- [ ] Expense categories customization
+- [ ] Expense tags and labels
+- [ ] Expense search functionality
+
+10.2 BUDGET FEATURES
+--------------------
+- [ ] Budget templates
+- [ ] Rollover budgets
+- [ ] Savings goals
+- [ ] Budget forecasting
+- [ ] Budget recommendations
+- [ ] Budget sharing with members
+- [ ] Budget history tracking
+
+10.3 REPORTING & ANALYTICS
+--------------------------
+- [ ] Monthly expense reports
+- [ ] Spending trends charts
+- [ ] Category breakdown pie charts
+- [ ] Year-over-year comparisons
+- [ ] Budget vs actual graphs
+- [ ] Export to CSV/Excel
+- [ ] PDF expense reports
+
+10.4 INTEGRATION FEATURES
+-------------------------
+- [ ] Link expenses to shopping lists
+- [ ] Auto-categorize from shopping
+- [ ] Bank account integration
+- [ ] Credit card import
+- [ ] Receipt email parsing
+- [ ] Expense reminders
+
+10.5 SMART FEATURES
+-------------------
+- [ ] AI expense categorization
+- [ ] Spending pattern detection
+- [ ] Budget optimization suggestions
+- [ ] Anomaly detection
+- [ ] Savings recommendations
+- [ ] Bill payment reminders
+
+================================================================================
+USAGE EXAMPLES
+================================================================================
+
+EXAMPLE 1: Tracking Weekly Groceries
+-------------------------------------
+1. After grocery shopping
+2. Open PantryPlus
+3. Navigate to /expenses
+4. Click "+ Add Expense"
+5. Description: "Walmart groceries"
+6. Amount: $125.50
+7. Category: Groceries
+8. Date: Today
+9. Save expense
+10. Check budget status (groceries)
+
+EXAMPLE 2: Setting Monthly Budget
+----------------------------------
+1. Start of month
+2. Review last month's spending
+3. Create budget for groceries: $600
+4. Create budget for utilities: $300
+5. Create budget for dining: $200
+6. Enable 80% alerts
+7. Track throughout month
+8. Receive alert when 80% spent
+
+EXAMPLE 3: Monthly Review
+--------------------------
+1. End of month
+2. View all expenses
+3. Total spent: $1,450
+4. Compare to budgets:
+   - Groceries: $580/$600 (97%)
+   - Utilities: $285/$300 (95%)
+   - Dining: $225/$200 (112% - over!)
+5. Adjust next month's dining budget
+6. Plan to reduce dining expenses
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ISSUE: Expenses not saving
+SOLUTION:
+- Check internet connection
+- Verify form is complete
+- Check Firebase quota
+- Try refreshing page
+
+ISSUE: Budget not calculating correctly
+SOLUTION:
+- Verify expense dates match budget period
+- Check category matches
+- Refresh budget data
+- Recalculate manually
+
+ISSUE: Summary cards showing wrong amounts
+SOLUTION:
+- Refresh the page
+- Check date filters
+- Verify household filter
+- Clear cache and reload
+
+================================================================================
+END OF MODULE 5 DOCUMENTATION
+================================================================================

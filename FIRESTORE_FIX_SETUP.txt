@@ -1,0 +1,148 @@
+================================================================================
+FIRESTORE ERROR FIX - IMPORTANT SETUP REQUIRED
+================================================================================
+
+## Issue Fixed
+The Firestore internal assertion error has been resolved by updating the 
+household query to use a `memberIds` array instead of querying with objects.
+
+## CRITICAL: Firebase Setup Required
+
+Before the app will work properly, you need to update your Firebase Firestore
+security rules and add a new field to existing household documents.
+
+### Step 1: Update Firestore Security Rules
+
+Go to Firebase Console → Firestore Database → Rules and update:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Households collection
+    match /households/{householdId} {
+      allow read: if request.auth != null && 
+                     request.auth.uid in resource.data.memberIds;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+                               request.auth.uid in resource.data.memberIds;
+    }
+    
+    // Inventory collection
+    match /inventory/{itemId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Shopping collection
+    match /shopping/{itemId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Meals collection
+    match /meals/{mealId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Tasks collection
+    match /tasks/{taskId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Expenses collection
+    match /expenses/{expenseId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Budgets collection
+    match /budgets/{budgetId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Invitations collection
+    match /invitations/{invitationId} {
+      allow read: if request.auth != null && 
+                     request.auth.token.email == resource.data.invitedEmail;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+    }
+  }
+}
+```
+
+### Step 2: Update Existing Household Documents
+
+If you have existing household documents in Firestore, you need to add the
+`memberIds` field to them. You can do this in two ways:
+
+#### Option A: Firebase Console (Manual)
+1. Go to Firebase Console → Firestore Database
+2. Find the `households` collection
+3. For each household document:
+   - Click on the document
+   - Add a new field: `memberIds` (type: array)
+   - Add the user IDs from the `members` array to this new array
+   - Example: If members array has objects with userId "abc123" and "def456",
+     add ["abc123", "def456"] to memberIds
+
+#### Option B: Automated Script (Recommended if you have many households)
+Run this in your browser console while on the Firebase Console:
+
+```javascript
+// This is a one-time migration script
+// Run in Firebase Console with Firestore open
+
+const db = firebase.firestore();
+
+db.collection('households').get().then(snapshot => {
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    if (data.members && !data.memberIds) {
+      const memberIds = data.members.map(m => m.userId);
+      doc.ref.update({ memberIds: memberIds })
+        .then(() => console.log(`Updated household: ${doc.id}`))
+        .catch(err => console.error(`Error updating ${doc.id}:`, err));
+    }
+  });
+});
+```
+
+### Step 3: Clear Browser Storage (Important!)
+
+After making the above changes:
+1. Open your app in the browser
+2. Open DevTools (F12)
+3. Go to Application tab → Storage
+4. Click "Clear site data"
+5. Refresh the page
+6. Sign in again
+
+This will clear the old cached data and fetch fresh data with the new structure.
+
+### What Changed
+
+1. **Query Method**: Changed from `where('members', 'array-contains', {userId})` 
+   to `where('memberIds', 'array-contains', userId)`
+
+2. **Data Structure**: Households now have both:
+   - `members`: Array of member objects (with userId, email, role, joinedAt)
+   - `memberIds`: Array of user ID strings (for efficient querying)
+
+3. **All member operations** now maintain both arrays in sync
+
+### Testing
+
+After completing the setup:
+1. Try creating a new household - should work without errors
+2. Try inviting a member - should work
+3. Check browser console - should see no Firestore errors
+4. Try switching between households - should work smoothly
+
+### If You Still See Errors
+
+1. Check that memberIds field exists in all household documents
+2. Verify security rules are published
+3. Clear browser cache completely
+4. Check browser console for specific error messages
+5. Verify Firebase configuration in .env.local
+
+================================================================================
