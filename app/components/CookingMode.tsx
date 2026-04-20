@@ -23,6 +23,9 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
     const [currentStep, setCurrentStep] = useState(0);
     const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
     const [timers, setTimers] = useState<Map<number, { remaining: number; active: boolean }>>(new Map());
+    const [aiQuery, setAiQuery] = useState('');
+    const [aiResponse, setAiResponse] = useState('');
+    const [isAskingAi, setIsAskingAi] = useState(false);
 
     const steps = recipe.analyzedInstructions[0]?.steps || [];
 
@@ -75,6 +78,29 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const handleAskAi = async () => {
+        if(!aiQuery.trim()) return;
+        setIsAskingAi(true);
+        try {
+            const res = await fetch('/api/recipes/substitute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    recipeName: recipe.title,
+                    stepInstruction: steps[currentStep].step,
+                    userQuery: aiQuery
+                })
+            });
+            const data = await res.json();
+            if(data.answer) setAiResponse(data.answer);
+        } catch(e) {
+            setAiResponse("Failed to connect to Kitchen Brain.");
+        } finally {
+            setIsAskingAi(false);
+            setAiQuery('');
+        }
     };
 
     const currentStepData = steps[currentStep];
@@ -145,6 +171,43 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
                                     {currentStepData.step}
                                 </p>
 
+                                {/* AI Substitution Assistance */}
+                                <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
+                                    <label className="block text-sm font-semibold text-primary-600 dark:text-primary-400 mb-2">
+                                        👩‍🍳 Missing an ingredient or need technique help? Ask AI:
+                                    </label>
+                                    <div className="flex gap-2 mb-3">
+                                        <input
+                                            type="text"
+                                            value={aiQuery}
+                                            onChange={e => setAiQuery(e.target.value)}
+                                            placeholder="e.g. Can I use baking soda instead of powder?"
+                                            disabled={isAskingAi}
+                                            className="flex-1 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-2 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary-500 text-sm"
+                                            onKeyDown={e => e.key === 'Enter' && handleAskAi()}
+                                        />
+                                        <button 
+                                            onClick={handleAskAi}
+                                            disabled={isAskingAi || !aiQuery.trim()}
+                                            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+                                        >
+                                            {isAskingAi ? 'Thinking...' : 'Ask'}
+                                        </button>
+                                    </div>
+                                    <AnimatePresence>
+                                        {aiResponse && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                className="bg-primary-50 dark:bg-primary-900/20 text-primary-900 dark:text-primary-100 p-4 rounded-lg text-sm border border-primary-200 dark:border-primary-800/50 mt-3"
+                                            >
+                                                <strong>AI Says: </strong> {aiResponse}
+                                                <button onClick={() => setAiResponse('')} className="ml-2 text-xs opacity-60 hover:opacity-100 underline border-none bg-transparent">(dismiss)</button>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+
                                 {/* Timer */}
                                 {currentStepData.length && (
                                     <div className="mt-6 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
@@ -176,7 +239,7 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
                                                 <button
                                                     onClick={() => startTimer(
                                                         currentStepData.number,
-                                                        currentStepData.length.number * (currentStepData.length.unit === 'minutes' ? 60 : 1)
+                                                        (currentStepData.length?.number || 0) * (currentStepData.length?.unit === 'minutes' ? 60 : 1)
                                                     )}
                                                     className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold"
                                                 >

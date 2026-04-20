@@ -255,6 +255,11 @@ export default function Shopping() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentHousehold) {
+      alert('Please select or create a household first');
+      router.push('/household/setup');
+      return;
+    }
     await addItem(formData);
     setFormData({
       name: '',
@@ -383,10 +388,32 @@ export default function Shopping() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 space-y-6">
+      <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
+        {/* No Household Warning */}
+        {!currentHousehold && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center p-8 text-center bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl border-2 border-dashed border-primary-300 dark:border-primary-700/50"
+          >
+            <div className="w-20 h-20 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mb-4">
+              <UserGroupIcon className="w-10 h-10 text-primary-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">No Household Selected</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-sm">
+              You need to join or create a household before you can manage your shopping list.
+            </p>
+            <button
+              onClick={() => router.push('/household/setup')}
+              className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl shadow-lg shadow-primary-200 dark:shadow-none transition-all transform hover:-translate-y-1"
+            >
+              Setup Household
+            </button>
+          </motion.div>
+        )}
+
         {/* Smart Suggestions */}
-        {lowStockItems.length > 0 && (
+        {currentHousehold && lowStockItems.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

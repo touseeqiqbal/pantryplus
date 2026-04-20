@@ -83,7 +83,7 @@ export function useExpenses() {
                 if (change.type === 'added' || change.type === 'modified') {
                     const existing = await db.expenses.where('firebaseId').equals(change.doc.id).first();
                     if (existing && existing.id) {
-                        await db.expenses.update(existing.id, expense);
+                        await db.expenses.update(existing.id, expense as Partial<Expense>);
                     } else {
                         await db.expenses.add(expense);
                     }
@@ -132,7 +132,7 @@ export function useExpenses() {
                 if (change.type === 'added' || change.type === 'modified') {
                     const existing = await db.budgets.where('firebaseId').equals(change.doc.id).first();
                     if (existing && existing.id) {
-                        await db.budgets.update(existing.id, budget);
+                        await db.budgets.update(existing.id, budget as Partial<Budget>);
                     } else {
                         await db.budgets.add(budget);
                     }

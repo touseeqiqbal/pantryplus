@@ -1,7 +1,7 @@
 {
-  "name": "PantryPlus - Smart Household Manager",
-  "short_name": "PantryPlus",
-  "description": "Manage your pantry, shopping, meals, and household tasks offline-first",
+  "name": "Pantry+ AI Kitchen",
+  "short_name": "Pantry+",
+  "description": "AI-Powered Kitchen & Inventory Management",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",

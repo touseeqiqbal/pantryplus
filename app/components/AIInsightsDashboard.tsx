@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useInventory } from '@/lib/hooks/useInventory';
 import { useShopping } from '@/lib/hooks/useShopping';
+import { useMeals } from '@/lib/hooks/useMeals';
+import { useExpenses } from '@/lib/hooks/useExpenses';
+import { useHousehold } from '@/lib/hooks/useHousehold';
 import {
     analyzeWaste,
     calculateInventoryValue,
@@ -24,17 +27,28 @@ import {
     CalendarIcon,
     ShoppingCartIcon,
     CurrencyDollarIcon,
+    HeartIcon,
+    ExclamationCircleIcon,
+    ArrowPathRoundedSquareIcon,
+    CheckCircleIcon,
+    ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
+import PredictiveDecayAnalyzer from './PredictiveDecayAnalyzer';
 
 export default function AIInsightsDashboard() {
     const { items: inventoryItems } = useInventory();
     const { items: shoppingItems } = useShopping();
+    const { meals } = useMeals();
+    const { expenses } = useExpenses();
+    const { currentHousehold } = useHousehold();
 
     const [wasteInsights, setWasteInsights] = useState<WasteInsight | null>(null);
     const [usagePatterns, setUsagePatterns] = useState<UsagePattern[]>([]);
     const [recurringItems, setRecurringItems] = useState<Array<{ name: string; frequency: number }>>([]);
     const [mealPlan, setMealPlan] = useState<MealPlanDay[]>([]);
     const [inventoryValue, setInventoryValue] = useState(0);
+    const [healthInsights, setHealthInsights] = useState<any>(null);
+    const [isHealthLoading, setIsHealthLoading] = useState(false);
 
     useEffect(() => {
         // Analyze waste (using expired items)
@@ -62,7 +76,33 @@ export default function AIInsightsDashboard() {
             inventoryItems.map(i => i.name)
         );
         setMealPlan(plan);
-    }, [inventoryItems, shoppingItems]);
+        
+        // Fetch Health Insights (AI powered)
+        const fetchHealth = async () => {
+            if (inventoryItems.length === 0) return;
+            setIsHealthLoading(true);
+            try {
+                const res = await fetch('/api/insights/health', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        inventory: inventoryItems.map(i => ({ name: i.name, category: i.category, quantity: i.quantity })),
+                        meals: meals.slice(0, 10), // Last 10 meals
+                        expenses: expenses.slice(0, 10), // Last 10 expenses
+                        household: currentHousehold
+                    })
+                });
+                const data = await res.json();
+                setHealthInsights(data);
+            } catch (error) {
+                console.error("Health analysis failed");
+            } finally {
+                setIsHealthLoading(false);
+            }
+        };
+        
+        fetchHealth();
+    }, [inventoryItems, shoppingItems, meals, expenses, currentHousehold]);
 
     const batchCookingOpportunities = suggestBatchCooking(mealPlan);
 
@@ -78,6 +118,15 @@ export default function AIInsightsDashboard() {
                     <p className="text-gray-600 dark:text-gray-400">Smart recommendations powered by AI</p>
                 </div>
             </div>
+
+            {/* Predictive Foresight Section (Phase 5) */}
+            <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/20 dark:to-gray-900 p-8 rounded-[3rem] border border-indigo-100 dark:border-indigo-900 shadow-xl"
+            >
+                <PredictiveDecayAnalyzer />
+            </motion.div>
 
             {/* Key Metrics */}
             <div className="grid md:grid-cols-4 gap-4">
@@ -314,6 +363,102 @@ export default function AIInsightsDashboard() {
                     </button>
                 </motion.div>
             )}
+
+            {/* Health & Nutrition Brain */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="card p-6 border-t-4 border-emerald-500 bg-gradient-to-br from-emerald-50/50 to-white dark:from-emerald-950/20 dark:to-gray-900"
+            >
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
+                        <HeartIcon className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    Vitality Brain: Personal Health Guard
+                </h3>
+
+                {isHealthLoading ? (
+                    <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                        <p className="text-emerald-600 dark:text-emerald-400 font-medium animate-pulse">Analyzing Nutritional Patterns...</p>
+                    </div>
+                ) : healthInsights ? (
+                    <div className="space-y-6">
+                        {/* Summary Observations */}
+                        <div className="grid md:grid-cols-2 gap-4">
+                            <div className="space-y-3">
+                                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                    <LightBulbIcon className="w-4 h-4" />
+                                    Key Observations
+                                </h4>
+                                <ul className="space-y-2">
+                                    {healthInsights.observations.map((obs: string, i: number) => (
+                                        <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 bg-white/50 dark:bg-gray-800/50 p-2 rounded-lg border border-gray-100 dark:border-gray-700">
+                                            <span className="text-emerald-500">•</span>
+                                            {obs}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            <div className="space-y-3">
+                                <h4 className="text-sm font-bold text-orange-400 uppercase tracking-wider flex items-center gap-2">
+                                    <ExclamationCircleIcon className="w-4 h-4" />
+                                    Habit Alerts
+                                </h4>
+                                <ul className="space-y-2">
+                                    {healthInsights.risks.map((risk: string, i: number) => (
+                                        <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 bg-orange-50/50 dark:bg-orange-950/20 p-2 rounded-lg border border-orange-100 dark:border-orange-900/30">
+                                            <span className="text-orange-500">⚠️</span>
+                                            {risk}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+
+                        {/* Smart Swaps */}
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <ArrowPathRoundedSquareIcon className="w-4 h-4" />
+                                Smart Swaps (Using Your Pantry)
+                            </h4>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {healthInsights.swaps.map((swap: any, i: number) => (
+                                    <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs line-through text-gray-400">{swap.original}</span>
+                                            <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
+                                                {swap.inPantry && <CheckCircleIcon className="w-3 h-3" />}
+                                                GO FOR {swap.healthier}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed italic">
+                                            "{swap.rationale}"
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Weekly Improvement Plan */}
+                        <div className="bg-emerald-600 p-6 rounded-2xl text-white shadow-xl">
+                            <h4 className="font-bold flex items-center gap-2 mb-3">
+                                <SparklesIcon className="w-5 h-5" />
+                                This Week's Vitality Plan
+                            </h4>
+                            <p className="text-sm text-emerald-50 leading-loose">
+                                {healthInsights.weeklyImprovementPlan}
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center py-8">
+                        <p className="text-gray-500">Add more items and meals to start generating health insights.</p>
+                    </div>
+                )}
+            </motion.div>
 
             {/* Batch Cooking Opportunities */}
             {batchCookingOpportunities.length > 0 && (

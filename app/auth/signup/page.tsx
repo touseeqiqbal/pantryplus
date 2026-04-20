@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Logo from '@/app/components/Logo';
 
 export default function SignUp() {
   const [email, setEmail] = useState('');
@@ -63,12 +64,15 @@ export default function SignUp() {
         transition={{ duration: 0.6 }}
         className="max-w-md w-full"
       >
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-2">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-gray-700">
+          <div className="flex justify-center mb-6">
+            <Logo size="lg" />
+          </div>
+          <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-2">
             Create Account
           </h2>
-          <p className="text-center text-gray-600 mb-8">
-            Start managing your pantry today
+          <p className="text-center text-gray-600 dark:text-gray-400 mb-8">
+            Start managing your kitchen today
           </p>
 
           {error && (
@@ -79,7 +83,7 @@ export default function SignUp() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email
               </label>
               <input
@@ -94,7 +98,7 @@ export default function SignUp() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Password
               </label>
               <input
@@ -109,7 +113,7 @@ export default function SignUp() {
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Confirm Password
               </label>
               <input
@@ -135,10 +139,10 @@ export default function SignUp() {
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
+                <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or continue with</span>
               </div>
             </div>
 
@@ -169,7 +173,7 @@ export default function SignUp() {
             </button>
           </div>
 
-          <p className="mt-8 text-center text-sm text-gray-600">
+          <p className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
             Already have an account?{' '}
             <Link href="/auth/signin" className="text-indigo-600 hover:text-indigo-700 font-semibold">
               Sign in

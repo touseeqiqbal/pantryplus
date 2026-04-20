@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useMeals } from '@/lib/hooks/useMeals';
+import { useInventory } from '@/lib/hooks/useInventory';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 
@@ -15,6 +16,10 @@ export default function MealPlanner() {
     const [selectedSlot, setSelectedSlot] = useState<{ date: string; mealType: string } | null>(null);
     const [mealName, setMealName] = useState('');
     const [servings, setServings] = useState(4);
+    const [aiPrompt, setAiPrompt] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [generatedRecipe, setGeneratedRecipe] = useState<any>(null);
+    const { items: inventory } = useInventory();
     const { user, signOut } = useAuth();
     const { currentHousehold } = useHousehold();
     const { meals, addMeal, deleteMeal } = useMeals();
@@ -81,6 +86,37 @@ export default function MealPlanner() {
         }
     };
 
+    const handleAIGenerate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if(!aiPrompt.trim()) return;
+        
+        setIsGenerating(true);
+        try {
+            const res = await fetch('/api/recipes/ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: aiPrompt,
+                    inventoryContext: inventory.map(i => ({ name: i.name, quantity: i.quantity })),
+                    dietaryProfile: currentHousehold?.settings?.dietaryProfile || "No specific dietary restrictions.",
+                    region: 'Pakistan', // Easily configurable from settings later
+                    mode: 'EXPIRING'
+                })
+            });
+            if (res.ok) {
+                const recipe = await res.json();
+                setGeneratedRecipe(recipe);
+                setAiPrompt('');
+            } else {
+                alert('Failed to generate recipe from AI.');
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     if (!mounted || !user || !currentHousehold) return null;
 
     return (
@@ -118,11 +154,120 @@ export default function MealPlanner() {
                         </div>
                         <Link
                             href="/recipes"
-                            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold"
+                            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold shadow-sm"
                         >
                             Browse Recipes
                         </Link>
                     </div>
+
+                    {/* AI Context-Aware Search */}
+                    <form onSubmit={handleAIGenerate} className="mb-8 bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 p-6 rounded-2xl border border-orange-200 dark:border-orange-800/50 shadow-sm">
+                        <div className="flex flex-col md:flex-row gap-4 items-center">
+                            <div className="flex-1 w-full">
+                                <label className="block text-sm font-semibold text-orange-800 dark:text-orange-300 mb-2">
+                                    ✨ Context-Aware Recipe AI
+                                </label>
+                                <input
+                                    type="text"
+                                    value={aiPrompt}
+                                    onChange={(e) => setAiPrompt(e.target.value)}
+                                    placeholder="e.g., 'Make a quick comfort food using what I have'"
+                                    className="w-full px-4 py-3 rounded-xl border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 shadow-sm"
+                                    disabled={isGenerating}
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isGenerating || !aiPrompt.trim()}
+                                className="w-full md:w-auto mt-6 px-8 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-semibold transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2"
+                            >
+                                {isGenerating ? (
+                                    <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"/> Thinking...</>
+                                ) : (
+                                    <>Generate</>
+                                )}
+                            </button>
+                        </div>
+                    </form>
+
+                    {/* Highly Structured Intelligent Context Recipe Card */}
+                    <AnimatePresence>
+                        {generatedRecipe && (
+                            <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border-l-4 border-l-orange-500 overflow-hidden"
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                            {generatedRecipe.recipeName}
+                                        </h3>
+                                        <div className="flex gap-2 mt-2">
+                                            <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-bold">
+                                                {generatedRecipe.mode} MODE
+                                            </span>
+                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                                                {generatedRecipe.timeLimitMinutes} mins
+                                            </span>
+                                            <span className="px-3 py-1 border border-orange-200 text-orange-600 text-xs rounded-full font-semibold">
+                                                Est: {generatedRecipe.costEstimate} local currency
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setGeneratedRecipe(null)} className="text-gray-400 hover:text-gray-600">✕</button>
+                                </div>
+
+                                <div className="mt-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-xl text-sm italic text-orange-800 dark:text-orange-200">
+                                    " {generatedRecipe.reasoning} "
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                    <div>
+                                        <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2 border-b pb-1">Ingredients Pulled From Pantry</h4>
+                                        <ul className="list-disc pl-5 text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                            {generatedRecipe.usedIngredients.map((i: string) => <li key={i}>{i}</li>)}
+                                        </ul>
+
+                                        {generatedRecipe.missingIngredients.length > 0 && (
+                                            <>
+                                                <h4 className="font-semibold text-red-600 dark:text-red-400 mt-4 mb-2 border-b border-red-100 pb-1">Missing (Add to Shopping List)</h4>
+                                                <ul className="list-disc pl-5 text-sm text-red-500/80 space-y-1">
+                                                    {generatedRecipe.missingIngredients.map((i: string) => <li key={i}>{i}</li>)}
+                                                </ul>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2 border-b pb-1">Smart Regional Substitutions</h4>
+                                        {generatedRecipe.smartSubstitutions.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {generatedRecipe.smartSubstitutions.map((sub: any, idx: number) => (
+                                                    <div key={idx} className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 text-sm">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="line-through text-gray-400">{sub.original}</span>
+                                                            <span className="font-bold text-orange-500">→ {sub.replacement}</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-1">{sub.reason}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-gray-500 italic">No exact regional swaps required.</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="mt-6">
+                                    <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3 border-b pb-1">Instructions</h4>
+                                    <ol className="list-decimal pl-5 text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                                        {generatedRecipe.steps.map((step: string, i: number) => <li key={i} className="pl-1">{step}</li>)}
+                                    </ol>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Week View */}
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">

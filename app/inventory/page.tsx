@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useInventory } from '@/lib/hooks/useInventory';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { InventoryItem } from '@/lib/db/dexie';
@@ -14,6 +14,7 @@ import SwipeableItemCard from '../components/SwipeableItemCard';
 import ViewModeSelector, { ViewMode } from '../components/ViewModeSelector';
 import ImageUpload from '../components/ImageUpload';
 import BulkSelectionBar from '../components/BulkSelectionBar';
+import AIVisionScanner from '../components/AIVisionScanner';
 import { lookupBarcode, suggestCategory, estimateExpiryDays } from '@/lib/services/barcodeService';
 import {
   MagnifyingGlassIcon,
@@ -22,10 +23,11 @@ import {
   FunnelIcon,
   ArrowsUpDownIcon,
   CheckCircleIcon,
+  CameraIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid';
 
-export default function Inventory() {
+function InventoryContent() {
   const { user, loading: authLoading } = useAuth();
   const { currentHousehold, loading: householdLoading } = useHousehold();
   const { items, loading: inventoryLoading, addItem, updateItem, deleteItem } = useInventory();
@@ -33,6 +35,7 @@ export default function Inventory() {
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [showAiScanner, setShowAiScanner] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -281,6 +284,15 @@ export default function Inventory() {
                 <CheckCircleIcon className="w-6 h-6" />
               </button>
 
+
+              <button
+                onClick={() => setShowAiScanner(true)}
+                className="p-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all hover:scale-105 shadow-md flex items-center gap-2"
+                title="AI Pantry Vision"
+              >
+                <QrCodeIcon className="w-5 h-5 md:hidden" />
+                <span className="hidden md:inline font-semibold text-sm">AI Scan</span>
+              </button>
               <button
                 onClick={() => setShowScanner(true)}
                 className="p-2 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-all hover:scale-105"
@@ -711,6 +723,27 @@ export default function Inventory() {
           />
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {showAiScanner && (
+          <AIVisionScanner onClose={() => setShowAiScanner(false)} />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+export default function Inventory() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+          <p className="text-gray-600 dark:text-gray-400 font-medium">Loading inventory...</p>
+        </div>
+      </div>
+    }>
+      <InventoryContent />
+    </Suspense>
   );
 }

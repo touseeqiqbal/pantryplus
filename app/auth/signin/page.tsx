@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Logo from '@/app/components/Logo';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
@@ -51,12 +52,15 @@ export default function SignIn() {
         transition={{ duration: 0.6 }}
         className="max-w-md w-full"
       >
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-2">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-gray-700">
+          <div className="flex justify-center mb-6">
+            <Logo size="lg" />
+          </div>
+          <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-2">
             Welcome Back
           </h2>
-          <p className="text-center text-gray-600 mb-8">
-            Sign in to access your pantry
+          <p className="text-center text-gray-600 dark:text-gray-400 mb-8">
+            Sign in to access your kitchen intelligence
           </p>
 
           {error && (
@@ -67,7 +71,7 @@ export default function SignIn() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email
               </label>
               <input
@@ -82,7 +86,7 @@ export default function SignIn() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Password
               </label>
               <input
@@ -111,7 +115,7 @@ export default function SignIn() {
                 <div className="w-full border-t border-gray-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or continue with</span>
               </div>
             </div>
 
@@ -142,7 +146,7 @@ export default function SignIn() {
             </button>
           </div>
 
-          <p className="mt-8 text-center text-sm text-gray-600">
+          <p className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
             Don&apos;t have an account?{' '}
             <Link href="/auth/signup" className="text-indigo-600 hover:text-indigo-700 font-semibold">
               Sign up

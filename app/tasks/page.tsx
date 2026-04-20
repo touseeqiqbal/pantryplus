@@ -76,7 +76,7 @@ export default function Tasks() {
                 <div className="container mx-auto px-4 py-4">
                     <div className="flex justify-between items-center">
                         <Link href="/dashboard" className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                            PantryPlus
+                            Pantry
                         </Link>
                         <button
                             onClick={() => signOut()}

@@ -16,49 +16,57 @@ import {
 import { db as firestore } from '@/lib/firebase/config';
 import { useAuth } from './useAuth';
 import { useHousehold } from './useHousehold';
+import { useBusiness } from './useBusiness';
+import { useAppMode } from './useAppMode';
 
 export function useInventory() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { currentHousehold } = useHousehold();
+  const { currentBusiness } = useBusiness();
+  const { isBusiness } = useAppMode();
   const { logActivity } = useActivityLog();
 
-  // Load items from IndexedDB on mount
+  // Determine the current context ID and field name
+  const contextId = isBusiness ? currentBusiness?.firebaseId : currentHousehold?.firebaseId;
+  const contextField = isBusiness ? 'businessId' : 'householdId';
+
+  // Load items from IndexedDB on mount or context change
   useEffect(() => {
     const loadItems = async () => {
-      if (!currentHousehold) {
+      if (!contextId) {
         setItems([]);
         setLoading(false);
         return;
       }
 
       const localItems = await db.inventory
-        .where('householdId')
-        .equals(currentHousehold.firebaseId || '')
+        .where(contextField)
+        .equals(contextId)
         .toArray();
       setItems(localItems);
       setLoading(false);
     };
     loadItems();
-  }, [currentHousehold]);
+  }, [contextId, contextField, isBusiness]);
 
-  // Sync with Firebase when user is authenticated
+  // Sync with Firebase
   useEffect(() => {
-    if (!user || !currentHousehold || !firestore) return;
+    if (!user || !contextId || !firestore) return;
 
     const q = query(
       collection(firestore, 'inventory'),
-      where('householdId', '==', currentHousehold.firebaseId)
+      where(contextField, '==', contextId)
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      // Process all changes sequentially to avoid race conditions
       await Promise.all(snapshot.docChanges().map(async (change) => {
         const data = change.doc.data();
         const item: InventoryItem = {
           firebaseId: change.doc.id,
-          householdId: data.householdId,
+          householdId: data.householdId || '',
+          businessId: data.businessId || '',
           name: data.name,
           category: data.category,
           quantity: data.quantity,
@@ -75,31 +83,7 @@ export function useInventory() {
         };
 
         if (change.type === 'added' || change.type === 'modified') {
-          // Check if item already exists in IndexedDB by firebaseId
-          const existingItem = await db.inventory.where('firebaseId').equals(change.doc.id).first();
-
-          if (existingItem && existingItem.id) {
-            // Update existing item
-            await db.inventory.update(existingItem.id, item);
-          } else {
-            // Check if we have a local item that was just created (might not have firebaseId yet but matches other props)
-            // This is a fallback for the race condition where we just added it locally
-            const localItem = await db.inventory
-              .where('createdAt')
-              .equals(item.createdAt)
-              .first();
-
-            if (localItem && localItem.id) {
-              await db.inventory.update(localItem.id, {
-                ...item,
-                firebaseId: change.doc.id,
-                syncStatus: 'synced'
-              });
-            } else {
-              // Add new item
-              await db.inventory.put(item);
-            }
-          }
+          await db.inventory.put(item);
         } else if (change.type === 'removed') {
           await db.inventory.where('firebaseId').equals(change.doc.id).delete();
         }
@@ -107,36 +91,33 @@ export function useInventory() {
 
       // Reload items from IndexedDB
       const localItems = await db.inventory
-        .where('householdId')
-        .equals(currentHousehold.firebaseId || '')
+        .where(contextField)
+        .equals(contextId)
         .toArray();
       setItems(localItems);
     });
 
     return unsubscribe;
-  }, [user, currentHousehold]);
+  }, [user, contextId, contextField]);
 
-  const addItem = async (item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt' | 'syncStatus' | 'householdId' | 'firebaseId'>) => {
-    if (!currentHousehold) throw new Error('No household selected');
+  const addItem = async (item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt' | 'syncStatus' | 'householdId' | 'businessId' | 'firebaseId'>) => {
+    if (!contextId) throw new Error('No context selected');
 
     const now = new Date().toISOString();
-    const newItem: InventoryItem = {
+    const newItem: Partial<InventoryItem> = {
       ...item,
-      householdId: currentHousehold.firebaseId || '',
+      [contextField]: contextId,
       createdAt: now,
       updatedAt: now,
       syncStatus: user ? 'pending' : 'synced',
     };
 
     // Add to IndexedDB
-    const id = await db.inventory.add(newItem);
+    const id = await db.inventory.add(newItem as InventoryItem);
 
-    // Sync to Firebase if user is authenticated
     if (user && firestore) {
       try {
         const docRef = await addDoc(collection(firestore, 'inventory'), newItem);
-
-        // Update local item with Firebase ID
         await db.inventory.update(id, {
           firebaseId: docRef.id,
           syncStatus: 'synced',
@@ -147,10 +128,9 @@ export function useInventory() {
       }
     }
 
-    // Reload items
     const updatedItems = await db.inventory
-      .where('householdId')
-      .equals(currentHousehold.firebaseId || '')
+      .where(contextField)
+      .equals(contextId)
       .toArray();
     setItems(updatedItems);
   };
@@ -165,10 +145,8 @@ export function useInventory() {
       syncStatus: user ? 'pending' as const : 'synced' as const,
     };
 
-    // Update in IndexedDB
     await db.inventory.update(id, updatedItem);
 
-    // Sync to Firebase if user is authenticated and item has firebaseId
     if (user && item.firebaseId && firestore) {
       try {
         const docRef = doc(firestore, 'inventory', item.firebaseId);
@@ -176,7 +154,6 @@ export function useInventory() {
           ...updatedItem,
           syncStatus: 'synced',
         });
-
         await db.inventory.update(id, { syncStatus: 'synced' });
       } catch (error) {
         console.error('Error syncing to Firebase:', error);
@@ -184,10 +161,9 @@ export function useInventory() {
       }
     }
 
-    // Reload items
     const updatedItems = await db.inventory
-      .where('householdId')
-      .equals(currentHousehold?.firebaseId || '')
+      .where(contextField)
+      .equals(contextId || '')
       .toArray();
     setItems(updatedItems);
   };
@@ -196,10 +172,8 @@ export function useInventory() {
     const item = await db.inventory.get(id);
     if (!item) return;
 
-    // Delete from IndexedDB
     await db.inventory.delete(id);
 
-    // Delete from Firebase if user is authenticated and item has firebaseId
     if (user && item.firebaseId && firestore) {
       try {
         await deleteDoc(doc(firestore, 'inventory', item.firebaseId));
@@ -208,10 +182,9 @@ export function useInventory() {
       }
     }
 
-    // Reload items
     const updatedItems = await db.inventory
-      .where('householdId')
-      .equals(currentHousehold?.firebaseId || '')
+      .where(contextField)
+      .equals(contextId || '')
       .toArray();
     setItems(updatedItems);
   };

@@ -13,6 +13,7 @@ import {
   UserGroupIcon,
   BellAlertIcon,
 } from '@heroicons/react/24/outline';
+import Logo from '@/app/components/Logo';
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -95,12 +96,11 @@ export default function Home() {
             <span>Smart Kitchen Management • Offline-First • PWA</span>
           </motion.div>
 
-          {/* Main Heading */}
           <h1 className="text-6xl md:text-7xl font-bold text-gray-900 dark:text-white mb-6">
-            Welcome to{' '}
-            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              PantryPlus
-            </span>
+            Welcome to
+            <div className="flex justify-center mt-4 mb-2">
+              <Logo size="hero" />
+            </div>
           </h1>
 
           <p className="text-2xl text-gray-600 dark:text-gray-300 mb-4 font-medium">
@@ -211,7 +211,7 @@ export default function Home() {
               Ready to Transform Your Kitchen?
             </h2>
             <p className="text-indigo-100 mb-6 max-w-2xl">
-              Join thousands of households managing their pantry smarter with PantryPlus
+              Join thousands of households managing their kitchen smarter with Pantry
             </p>
             <Link
               href="/auth/signup"
@@ -227,8 +227,9 @@ export default function Home() {
       <footer className="border-t border-gray-200 dark:border-gray-800 mt-20">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-gray-600 dark:text-gray-400">
-            <p className="mb-2">
-              <span className="font-bold text-indigo-600 dark:text-indigo-400">PantryPlus</span> - Smart Kitchen Management
+            <p className="mb-2 flex flex-col items-center gap-2">
+              <Logo size="sm" />
+              <span className="text-sm">Smart Kitchen Management</span>
             </p>
             <p className="text-sm">
               Built with ❤️ using Next.js, TypeScript, Firebase & Modern Web Technologies

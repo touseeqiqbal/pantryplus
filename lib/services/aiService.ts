@@ -458,7 +458,7 @@ export function generateWeeklyMealPlan(
  */
 export function optimizeNutrition(
     mealPlan: MealPlanDay[],
-    targetNutrition: { protein: number; carbs: number; fat: number }
+    _targetNutrition: { protein: number; carbs: number; fat: number }
 ): MealPlanDay[] {
     // This would use nutritional data to balance macros
     // For now, return the original plan

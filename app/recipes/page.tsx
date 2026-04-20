@@ -3,6 +3,7 @@
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useInventory } from '@/lib/hooks/useInventory';
 import { useShopping } from '@/lib/hooks/useShopping';
+import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,6 +35,7 @@ export default function Recipes() {
   const { user, loading: authLoading } = useAuth();
   const { items: inventoryItems } = useInventory();
   const { addItem: addToShopping } = useShopping();
+  const { currentHousehold } = useHousehold();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -103,6 +105,12 @@ export default function Recipes() {
 
   const addMissingIngredientsToShopping = async () => {
     if (!selectedRecipe) return;
+    
+    if (!currentHousehold) {
+      alert('Please select or create a household first');
+      router.push('/household/setup');
+      return;
+    }
 
     const scaleFactor = servings / selectedRecipe.servings;
 

@@ -97,6 +97,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
                         currency: 'USD',
                         timezone: 'UTC',
                         notifications: true,
+                        dietaryProfile: ''
                     },
                     syncStatus: 'synced',
                 };

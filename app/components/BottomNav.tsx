@@ -7,7 +7,9 @@ import {
     ArchiveBoxIcon,
     ShoppingCartIcon,
     BookOpenIcon,
-    Bars3Icon
+    Bars3Icon,
+    BuildingStorefrontIcon,
+    UserIcon
 } from '@heroicons/react/24/outline';
 import {
     HomeIcon as HomeIconSolid,
@@ -18,6 +20,7 @@ import {
 } from '@heroicons/react/24/solid';
 import { useState } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useAppMode } from '@/lib/hooks/useAppMode';
 
 interface NavItem {
     name: string;
@@ -31,6 +34,7 @@ export default function BottomNav() {
     const pathname = usePathname();
     const router = useRouter();
     const { user, loading } = useAuth();
+    const { mode, toggleMode, isBusiness } = useAppMode();
     const [showMore, setShowMore] = useState(false);
 
     // Hide navigation on auth pages or when user is not logged in
@@ -141,6 +145,35 @@ export default function BottomNav() {
                                         </span>
                                     </button>
                                 ))}
+                            </div>
+
+                            {/* Mode Switcher Section */}
+                            <div className="mt-4 p-4 bg-primary-50 dark:bg-primary-900/30 rounded-2xl border border-primary-100 dark:border-primary-800">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2 bg-primary-100 dark:bg-primary-800 rounded-lg text-primary-600 dark:text-primary-400">
+                                            {isBusiness ? <BuildingStorefrontIcon className="w-6 h-6" /> : <UserIcon className="w-6 h-6" />}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                                {isBusiness ? 'Business Mode' : 'Personal Mode'}
+                                            </p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                {isBusiness ? 'Managing your cafe inventory' : 'Managing your home pantry'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            toggleMode();
+                                            setShowMore(false);
+                                            router.push('/dashboard'); // Refresh context on dashboard
+                                        }}
+                                        className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-primary-200 dark:shadow-none transition-all active:scale-95"
+                                    >
+                                        Switch to {isBusiness ? 'Personal' : 'Business'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </motion.div>

@@ -8,10 +8,13 @@ import { useExpenses } from '@/lib/hooks/useExpenses';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import ExpenseForecast from '../components/ExpenseForecast';
+import { CameraIcon } from '@heroicons/react/24/outline';
+import AIReceiptScanner from '../components/AIReceiptScanner';
 
 export default function Expenses() {
     const [mounted, setMounted] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showScanner, setShowScanner] = useState(false);
     const [formData, setFormData] = useState({
         amount: 0,
         currency: 'USD',
@@ -199,6 +202,13 @@ export default function Expenses() {
                     </div>
                 </motion.div>
             </main>
+
+            {/* AI Receipt Scanner Modal */}
+            <AnimatePresence>
+                {showScanner && (
+                    <AIReceiptScanner onClose={() => setShowScanner(false)} />
+                )}
+            </AnimatePresence>
 
             {/* Add Expense Modal */}
             <AnimatePresence>
