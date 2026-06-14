@@ -10,10 +10,71 @@ import {
     ShieldCheckIcon,
     ChartBarIcon,
 } from '@heroicons/react/24/outline';
+import { useRouter } from 'next/navigation';
 import { useInventory } from '@/lib/hooks/useInventory';
 import { useAppMode } from '@/lib/hooks/useAppMode';
 
+// Perishable categories used by the offline heuristic fallback.
+const PERISHABLE = ['Fruits & Vegetables', 'Dairy', 'Meat & Seafood', 'Frozen Foods'];
+
+/**
+ * Data-driven foresight computed locally from real inventory. Used as a fallback
+ * when the AI endpoint is unavailable (e.g. offline), so the panel always
+ * reflects the user's actual items rather than placeholder data.
+ */
+function computeLocalForesight(inventory: any[], isBusiness: boolean) {
+    const now = Date.now();
+    const dayMs = 1000 * 60 * 60 * 24;
+
+    const alerts = inventory
+        .map(item => {
+            const daysToExpiry = item.expiryDate
+                ? Math.ceil((new Date(item.expiryDate).getTime() - now) / dayMs)
+                : null;
+            const ageDays = item.createdAt
+                ? Math.floor((now - new Date(item.createdAt).getTime()) / dayMs)
+                : 0;
+            const isPerishable = PERISHABLE.includes(item.category);
+
+            let riskLevel: 'high' | 'medium' | null = null;
+            let reason = '';
+
+            if (daysToExpiry !== null && daysToExpiry <= 2) {
+                riskLevel = 'high';
+                reason = `Expires in ${Math.max(daysToExpiry, 0)} day(s).`;
+            } else if (daysToExpiry !== null && daysToExpiry <= 5) {
+                riskLevel = 'medium';
+                reason = `Expires in ${daysToExpiry} days — use soon.`;
+            } else if (isPerishable && ageDays >= 4) {
+                riskLevel = 'medium';
+                reason = `Perishable item purchased ${ageDays} days ago.`;
+            }
+
+            if (!riskLevel) return null;
+            return {
+                itemName: item.name,
+                riskLevel,
+                reason,
+                saveMeTip: `Plan a meal using ${item.name} within the next day to avoid waste.`,
+                suggestedRecipe: `Quick ${item.name} dish`,
+            };
+        })
+        .filter(Boolean)
+        .sort((a: any, b: any) => (a.riskLevel === 'high' ? -1 : 1))
+        .slice(0, 6);
+
+    return {
+        alerts,
+        businessAnomalies: [],
+        foresightSummary: alerts.length
+            ? `${alerts.length} item(s) need attention based on age and expiry.`
+            : 'Inventory health looks stable.',
+        _local: isBusiness,
+    };
+}
+
 export default function PredictiveDecayAnalyzer() {
+    const router = useRouter();
     const { items: inventory } = useInventory();
     const { isBusiness } = useAppMode();
     const [foresight, setForesight] = useState<any>(null);
@@ -27,38 +88,44 @@ export default function PredictiveDecayAnalyzer() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    inventory: inventory.map(i => ({ name: i.name, category: i.category, createdAt: i.createdAt })),
-                    isBusiness
-                })
+                    inventory: inventory.map(i => ({
+                        name: i.name,
+                        category: i.category,
+                        createdAt: i.createdAt,
+                        expiryDate: i.expiryDate,
+                    })),
+                    isBusiness,
+                }),
             });
-            // Note: Since we are using streamObject, we handle as a partial JSON or wait for end for simplicity here
-            // For production, use useObject hook from 'ai/react'
+
+            if (!res.ok) throw new Error('Predictive endpoint error');
+
+            // streamObject().toTextStreamResponse() accumulates the JSON object;
+            // the full body once the stream ends is valid JSON.
             const text = await res.text();
-            // This is a simplified fetch for the raw stream text, in real use we'd use the useObject hook
-            // but we'll simulate the data structure for immediate UI testing
+            const parsed = JSON.parse(text);
+            if (parsed && Array.isArray(parsed.alerts)) {
+                setForesight(parsed);
+            } else {
+                throw new Error('Unexpected shape');
+            }
         } catch (e) {
-            console.error("Foresight failed");
+            console.error('Foresight AI unavailable, using local analysis:', e);
+            setForesight(computeLocalForesight(inventory, isBusiness));
         } finally {
             setIsLoading(false);
         }
     };
 
-    // To ensure UI demonstration, we'll use a mocked foresight object that mirrors the Gemini output
-    // This allows the user to see the PREMIUM design immediately
+    // Run foresight once inventory is available. Falls back to local heuristics
+    // if the AI call fails so the panel always reflects real items.
     useEffect(() => {
-        if (inventory.length > 0) {
-            // Simulated Foresight
-            setForesight({
-                alerts: [
-                    { itemName: 'Fresh Spinach', riskLevel: 'high', reason: 'High moisture content and purchased 4 days ago.', saveMeTip: 'Sauté with garlic immediately or blend into a pesto.', suggestedRecipe: 'Spinach & Pine Nut Pesto' },
-                    { itemName: 'Whole Milk', riskLevel: 'medium', reason: 'Nearing estimated consumption window.', saveMeTip: 'Use for a batch of béchamel or pancakes tomorrow.', suggestedRecipe: 'Golden Fluffy Pancakes' }
-                ],
-                businessAnomalies: isBusiness ? [
-                    { category: 'Dairy Waste', description: '20% spike in milk spoilage vs last 3 weeks.', severity: 'warning', recommendedAction: 'Check fridge temp sensors and reduce Tuesday order quantity.' }
-                ] : [],
-                foresightSummary: "Overall inventory health is stable, but high-perishables need immediate attention."
-            });
+        if (inventory.length > 0 && !foresight) {
+            // Show instant local insight, then upgrade with AI.
+            setForesight(computeLocalForesight(inventory, isBusiness));
+            fetchForesight();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [inventory, isBusiness]);
 
     if (!foresight && !isLoading) return null;
@@ -76,7 +143,7 @@ export default function PredictiveDecayAnalyzer() {
 
             {/* Decay Alerts */}
             <div className="grid md:grid-cols-2 gap-4">
-                {foresight?.alerts.map((alert: any, i: number) => (
+                {foresight?.alerts?.map((alert: any, i: number) => (
                     <motion.div
                         key={i}
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -111,7 +178,10 @@ export default function PredictiveDecayAnalyzer() {
                             <p className="text-xs text-gray-700 dark:text-gray-300 italic mb-3">
                                 {alert.saveMeTip}
                             </p>
-                            <button className="w-full py-2 bg-gray-900 dark:bg-indigo-600 text-white text-[10px] font-bold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+                            <button
+                                onClick={() => router.push(`/recipes?q=${encodeURIComponent(alert.itemName)}`)}
+                                className="w-full py-2 bg-gray-900 dark:bg-indigo-600 text-white text-[10px] font-bold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                            >
                                 <LightBulbIcon className="w-3 h-3" />
                                 SEE RECIPE: {alert.suggestedRecipe}
                             </button>

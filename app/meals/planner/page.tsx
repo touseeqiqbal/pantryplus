@@ -6,8 +6,18 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useMeals } from '@/lib/hooks/useMeals';
 import { useInventory } from '@/lib/hooks/useInventory';
+import { useShopping } from '@/lib/hooks/useShopping';
+import { useUI } from '@/app/components/ui/Toaster';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+
+interface GeneratedShoppingItem {
+    name: string;
+    quantity: number;
+    unit: string;
+    category: string;
+    forMeals: string[];
+}
 
 export default function MealPlanner() {
     const [mounted, setMounted] = useState(false);
@@ -19,10 +29,18 @@ export default function MealPlanner() {
     const [aiPrompt, setAiPrompt] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedRecipe, setGeneratedRecipe] = useState<any>(null);
+    const [isGeneratingList, setIsGeneratingList] = useState(false);
+    const [showListModal, setShowListModal] = useState(false);
+    const [generatedList, setGeneratedList] = useState<GeneratedShoppingItem[]>([]);
+    const [listNotes, setListNotes] = useState('');
+    const [selectedListItems, setSelectedListItems] = useState<Record<number, boolean>>({});
+    const [addedToList, setAddedToList] = useState(false);
     const { items: inventory } = useInventory();
     const { user, signOut } = useAuth();
     const { currentHousehold } = useHousehold();
     const { meals, addMeal, deleteMeal } = useMeals();
+    const { addItem: addShoppingItem } = useShopping();
+    const { toast, confirm } = useUI();
     const router = useRouter();
 
     useEffect(() => {
@@ -81,7 +99,7 @@ export default function MealPlanner() {
 
     const handleDeleteMeal = async (mealId: number | undefined) => {
         if (!mealId) return;
-        if (confirm('Are you sure you want to delete this meal?')) {
+        if (await confirm({ message: 'Delete this meal?', confirmText: 'Delete', danger: true })) {
             await deleteMeal(mealId);
         }
     };
@@ -108,13 +126,90 @@ export default function MealPlanner() {
                 setGeneratedRecipe(recipe);
                 setAiPrompt('');
             } else {
-                alert('Failed to generate recipe from AI.');
+                toast('Failed to generate recipe from AI.', 'error');
             }
         } catch (error) {
             console.error(error);
         } finally {
             setIsGenerating(false);
         }
+    };
+
+    const handleGenerateShoppingList = async () => {
+        // Collect every meal planned in the currently visible week.
+        const plannedMeals = weekDates
+            .flatMap(date =>
+                mealTypes.map(mealType => getMealForSlot(date, mealType))
+            )
+            .filter(Boolean)
+            .map(meal => ({
+                name: meal!.recipeName || meal!.customMeal || 'Meal',
+                servings: meal!.servings || 1,
+            }));
+
+        if (plannedMeals.length === 0) {
+            toast('Add some meals to your weekly plan first, then generate a shopping list.', 'info');
+            return;
+        }
+
+        setIsGeneratingList(true);
+        setAddedToList(false);
+        try {
+            const res = await fetch('/api/shopping/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    meals: plannedMeals,
+                    inventoryContext: inventory.map(i => ({
+                        name: i.name,
+                        quantity: i.quantity,
+                        unit: i.unit,
+                    })),
+                    dietaryProfile:
+                        currentHousehold?.settings?.dietaryProfile ||
+                        'No specific dietary restrictions.',
+                }),
+            });
+
+            if (!res.ok) {
+                toast('Failed to generate shopping list from AI.', 'error');
+                return;
+            }
+
+            const data = await res.json();
+            const items: GeneratedShoppingItem[] = data.items || [];
+            setGeneratedList(items);
+            setListNotes(data.notes || '');
+            // Pre-select all suggested items.
+            setSelectedListItems(
+                items.reduce((acc, _item, idx) => ({ ...acc, [idx]: true }), {})
+            );
+            setShowListModal(true);
+        } catch (error) {
+            console.error(error);
+            toast('Something went wrong generating the shopping list.', 'error');
+        } finally {
+            setIsGeneratingList(false);
+        }
+    };
+
+    const handleAddGeneratedItems = async () => {
+        const toAdd = generatedList.filter((_item, idx) => selectedListItems[idx]);
+        if (toAdd.length === 0) return;
+
+        for (const item of toAdd) {
+            await addShoppingItem({
+                name: item.name,
+                quantity: item.quantity,
+                unit: item.unit,
+                category: item.category,
+                purchased: false,
+                notes: 'Generated from meal plan',
+            });
+        }
+
+        setAddedToList(true);
+        setTimeout(() => setShowListModal(false), 1200);
     };
 
     if (!mounted || !user || !currentHousehold) return null;
@@ -152,12 +247,25 @@ export default function MealPlanner() {
                                 Plan your weekly meals
                             </p>
                         </div>
-                        <Link
-                            href="/recipes"
-                            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold shadow-sm"
-                        >
-                            Browse Recipes
-                        </Link>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleGenerateShoppingList}
+                                disabled={isGeneratingList}
+                                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold shadow-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {isGeneratingList ? (
+                                    <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Building...</>
+                                ) : (
+                                    <>🛒 Generate Shopping List</>
+                                )}
+                            </button>
+                            <Link
+                                href="/recipes"
+                                className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold shadow-sm"
+                            >
+                                Browse Recipes
+                            </Link>
+                        </div>
                     </div>
 
                     {/* AI Context-Aware Search */}
@@ -413,6 +521,88 @@ export default function MealPlanner() {
                                 >
                                     Add Meal
                                 </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Generated Shopping List Modal */}
+            <AnimatePresence>
+                {showListModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+                        onClick={() => setShowListModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full p-6 max-h-[85vh] overflow-y-auto"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                                🛒 AI Shopping List
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                                {listNotes || 'Generated from your weekly meal plan, minus what you already have.'}
+                            </p>
+
+                            {generatedList.length === 0 ? (
+                                <div className="py-8 text-center text-gray-500 dark:text-gray-400">
+                                    🎉 Your inventory already covers this week&apos;s meals — nothing to buy!
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {generatedList.map((item, idx) => (
+                                        <label
+                                            key={`${item.name}-${idx}`}
+                                            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={!!selectedListItems[idx]}
+                                                onChange={(e) =>
+                                                    setSelectedListItems(prev => ({ ...prev, [idx]: e.target.checked }))
+                                                }
+                                                className="w-5 h-5 rounded text-green-600 focus:ring-green-500"
+                                            />
+                                            <div className="flex-1">
+                                                <div className="font-medium text-gray-900 dark:text-white">
+                                                    {item.name}
+                                                    <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                                                        {item.quantity} {item.unit}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                    {item.category}
+                                                    {item.forMeals?.length > 0 && ` · for ${item.forMeals.join(', ')}`}
+                                                </div>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setShowListModal(false)}
+                                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                    Close
+                                </button>
+                                {generatedList.length > 0 && (
+                                    <button
+                                        onClick={handleAddGeneratedItems}
+                                        disabled={addedToList || Object.values(selectedListItems).every(v => !v)}
+                                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                                    >
+                                        {addedToList ? '✓ Added!' : 'Add to Shopping List'}
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     </motion.div>

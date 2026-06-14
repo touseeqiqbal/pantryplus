@@ -1,6 +1,6 @@
-import { db, InventoryItem, YieldLog, IngredientMapping } from '@/lib/db/dexie';
+import { db, YieldLog } from '@/lib/db/dexie';
 import { db as firestore } from '@/lib/firebase/config';
-import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 
 /**
  * Service to handle business yield logic: Prep, Sales, and Waste events.
@@ -21,73 +21,80 @@ export const yieldService = {
             return null;
         }
 
-        // 2. Perform deductions in a transaction
-        return await db.transaction('rw', [db.inventory, db.yieldLogs], async () => {
-            const deductions = [];
+        // 2. Perform all LOCAL deductions atomically. Firebase writes are done
+        // AFTER the transaction — awaiting a network call inside a Dexie
+        // transaction can make it commit/abort early ("Transaction committed too
+        // early"). We deduct to an absolute floored quantity so local and remote
+        // never diverge (previously local floored at 0 but remote used increment).
+        const now = new Date().toISOString();
+        const yieldLog: Omit<YieldLog, 'id'> = {
+            businessId,
+            branchId: 'main', // Default branch for now
+            type: 'sale',
+            entityId: menuItemId,
+            quantity: quantitySold,
+            unit: 'servings',
+            staffId,
+            timestamp: now,
+            syncStatus: 'pending',
+        };
 
-            for (const ing of mapping.ingredients) {
-                // Calculate required quantity: sold * quantityPerDish * wastage
-                const requiredQty = quantitySold * ing.quantity * ing.wastageFactor;
+        const { deductions, toSync, logId } = await db.transaction(
+            'rw',
+            [db.inventory, db.yieldLogs],
+            async () => {
+                const deductions: Array<{ name: string; deducted: number }> = [];
+                const toSync: Array<{ localId: number; firebaseId?: string; newQuantity: number }> = [];
 
-                // Find inventory item by firebaseId (which is what mappings store)
-                const inventoryItem = await db.inventory
-                    .where('firebaseId')
-                    .equals(ing.inventoryItemId)
-                    .first();
+                for (const ing of mapping.ingredients) {
+                    const requiredQty = quantitySold * ing.quantity * ing.wastageFactor;
+                    const inventoryItem = await db.inventory
+                        .where('firebaseId')
+                        .equals(ing.inventoryItemId)
+                        .first();
 
-                if (inventoryItem && inventoryItem.id) {
-                    const newQuantity = Math.max(0, inventoryItem.quantity - requiredQty);
-                    
-                    // Update local Dexie
-                    await db.inventory.update(inventoryItem.id, {
-                        quantity: newQuantity,
-                        updatedAt: new Date().toISOString(),
-                        syncStatus: 'pending'
-                    });
-
-                    // Prepare Firebase sync
-                    if (firestore) {
-                        try {
-                            const invRef = doc(firestore, 'inventory', inventoryItem.firebaseId!);
-                            await updateDoc(invRef, {
-                                quantity: increment(-requiredQty),
-                                syncStatus: 'synced'
-                            });
-                        } catch (e) {
-                            console.error("Firebase deduction failed:", e);
-                        }
+                    if (inventoryItem && inventoryItem.id) {
+                        const newQuantity = Math.max(0, inventoryItem.quantity - requiredQty);
+                        await db.inventory.update(inventoryItem.id, {
+                            quantity: newQuantity,
+                            updatedAt: now,
+                            syncStatus: 'pending',
+                        });
+                        deductions.push({ name: inventoryItem.name, deducted: requiredQty });
+                        toSync.push({ localId: inventoryItem.id, firebaseId: inventoryItem.firebaseId, newQuantity });
                     }
-
-                    deductions.push({ name: inventoryItem.name, deducted: requiredQty });
                 }
+
+                const logId = await db.yieldLogs.add(yieldLog as YieldLog);
+                return { deductions, toSync, logId };
             }
+        );
 
-            // 3. Create Yield Log Entry
-            const yieldLog: Omit<YieldLog, 'id'> = {
-                businessId,
-                branchId: 'main', // Default branch for now
-                type: 'sale',
-                entityId: menuItemId,
-                quantity: quantitySold,
-                unit: 'servings',
-                staffId,
-                timestamp: new Date().toISOString(),
-                syncStatus: 'pending'
-            };
-
-            const logId = await db.yieldLogs.add(yieldLog as YieldLog);
-
-            if (firestore) {
+        // 3. Sync to Firebase outside the transaction (best-effort; the sync
+        // service will retry anything left 'pending').
+        if (firestore) {
+            for (const s of toSync) {
+                if (!s.firebaseId) continue;
                 try {
-                    const logRef = await addDoc(collection(firestore, 'yieldLogs'), yieldLog);
-                    await db.yieldLogs.update(logId, { firebaseId: logRef.id, syncStatus: 'synced' });
+                    await updateDoc(doc(firestore, 'inventory', s.firebaseId), {
+                        quantity: s.newQuantity,
+                        updatedAt: now,
+                        syncStatus: 'synced',
+                    });
+                    await db.inventory.update(s.localId, { syncStatus: 'synced' });
                 } catch (e) {
-                    console.error("Firebase log failed:", e);
+                    console.error('Firebase deduction failed:', e);
                 }
             }
+            try {
+                const logRef = await addDoc(collection(firestore, 'yieldLogs'), yieldLog);
+                await db.yieldLogs.update(logId, { firebaseId: logRef.id, syncStatus: 'synced' });
+            } catch (e) {
+                console.error('Firebase log failed:', e);
+            }
+        }
 
-            return { logId, deductions };
-        });
+        return { logId, deductions };
     },
 
     /**

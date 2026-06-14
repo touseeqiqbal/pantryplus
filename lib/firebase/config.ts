@@ -1,6 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
@@ -36,12 +36,11 @@ if (typeof window !== 'undefined') {
       app = initializeApp(firebaseConfig);
       auth = getAuth(app);
 
-      // Initialize Firestore with settings to avoid internal assertion errors
-      // Disable persistence to prevent state management issues
-      db = getFirestore(app);
-
-      // Note: We're using the default settings which don't enable persistence
-      // If you need offline support, use IndexedDB (Dexie) instead
+      // ignoreUndefinedProperties lets us write partial objects (optional fields
+      // left undefined) without addDoc/updateDoc throwing — the app's hooks spread
+      // optional fields that are frequently undefined. Offline persistence is
+      // intentionally handled by IndexedDB (Dexie), not Firestore.
+      db = initializeFirestore(app, { ignoreUndefinedProperties: true });
     } else {
       app = getApps()[0];
       auth = getAuth(app);

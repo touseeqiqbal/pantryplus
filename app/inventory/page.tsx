@@ -15,6 +15,7 @@ import ViewModeSelector, { ViewMode } from '../components/ViewModeSelector';
 import ImageUpload from '../components/ImageUpload';
 import BulkSelectionBar from '../components/BulkSelectionBar';
 import AIVisionScanner from '../components/AIVisionScanner';
+import { useUI } from '../components/ui/Toaster';
 import { lookupBarcode, suggestCategory, estimateExpiryDays } from '@/lib/services/barcodeService';
 import {
   MagnifyingGlassIcon,
@@ -31,6 +32,7 @@ function InventoryContent() {
   const { user, loading: authLoading } = useAuth();
   const { currentHousehold, loading: householdLoading } = useHousehold();
   const { items, loading: inventoryLoading, addItem, updateItem, deleteItem } = useInventory();
+  const { toast, confirm } = useUI();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
@@ -59,6 +61,7 @@ function InventoryContent() {
     barcode: '',
     minThreshold: 0,
     imageUrl: '',
+    isPrivate: false,
   });
 
   useEffect(() => {
@@ -98,6 +101,7 @@ function InventoryContent() {
       barcode: '',
       minThreshold: 0,
       imageUrl: '',
+      isPrivate: false,
     });
     setEditingItem(null);
   };
@@ -152,6 +156,7 @@ function InventoryContent() {
       barcode: item.barcode || '',
       minThreshold: item.minThreshold || 0,
       imageUrl: item.imageUrl || '',
+      isPrivate: item.isPrivate || false,
     });
     setShowAddModal(true);
   };
@@ -170,12 +175,18 @@ function InventoryContent() {
   };
 
   const handleBulkDelete = async () => {
-    if (confirm(`Delete ${selectedItems.size} items?`)) {
+    if (await confirm({
+      title: 'Delete items',
+      message: `Delete ${selectedItems.size} selected item(s)? This cannot be undone.`,
+      confirmText: 'Delete',
+      danger: true,
+    })) {
       for (const id of Array.from(selectedItems)) {
         await deleteItem(id);
       }
       setSelectedItems(new Set());
       setBulkSelectMode(false);
+      toast(`Deleted ${selectedItems.size} item(s)`, 'success');
     }
   };
 
@@ -688,6 +699,22 @@ function InventoryContent() {
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                   </div>
+
+                  {/* Module 11: Private item toggle */}
+                  <label className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/40 cursor-pointer">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      🔒 Private item
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">
+                        Hidden from other household members
+                      </span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={formData.isPrivate}
+                      onChange={(e) => setFormData({ ...formData, isPrivate: e.target.checked })}
+                      className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500"
+                    />
+                  </label>
 
                   <div className="flex gap-4 pt-4">
                     <button

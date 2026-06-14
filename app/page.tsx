@@ -227,10 +227,10 @@ export default function Home() {
       <footer className="border-t border-gray-200 dark:border-gray-800 mt-20">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-gray-600 dark:text-gray-400">
-            <p className="mb-2 flex flex-col items-center gap-2">
+            <div className="mb-2 flex flex-col items-center gap-2">
               <Logo size="sm" />
               <span className="text-sm">Smart Kitchen Management</span>
-            </p>
+            </div>
             <p className="text-sm">
               Built with ❤️ using Next.js, TypeScript, Firebase & Modern Web Technologies
             </p>

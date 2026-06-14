@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from '../components/ThemeToggle';
+import { useUI } from '../components/ui/Toaster';
+import { deleteAllUserData } from '@/lib/services/dataService';
 import {
     UserCircleIcon,
     BellIcon,
@@ -74,6 +76,7 @@ const sections: SettingsSection[] = [
 
 export default function Settings() {
     const { user, loading: authLoading, signOut } = useAuth();
+    const { toast, confirm } = useUI();
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
     const [activeSection, setActiveSection] = useState('account');
@@ -112,7 +115,7 @@ export default function Settings() {
 
         // Inventory
         defaultUnit: 'pieces',
-        autoCategorizatio: true,
+        autoCategorization: true,
         expiryPrediction: true,
         wasteTracking: true,
 
@@ -154,19 +157,38 @@ export default function Settings() {
     };
 
     const handleSignOut = async () => {
-        if (confirm('Are you sure you want to sign out?')) {
+        if (await confirm({ title: 'Sign out', message: 'Are you sure you want to sign out?', confirmText: 'Sign out' })) {
             await signOut();
             router.push('/auth/signin');
         }
     };
 
-    const clearAllData = () => {
-        if (confirm('⚠️ This will delete ALL your data including inventory, shopping lists, and meal plans. This action cannot be undone!\n\nAre you absolutely sure?')) {
-            if (confirm('Last chance! This will permanently delete everything. Continue?')) {
-                localStorage.clear();
-                alert('All data has been cleared. You will be signed out.');
-                handleSignOut();
-            }
+    const clearAllData = async () => {
+        const first = await confirm({
+            title: 'Delete all data',
+            message: '⚠️ This will delete ALL your data including inventory, shopping lists, and meal plans — locally AND in the cloud (for households you own). This action cannot be undone.',
+            confirmText: 'Continue',
+            danger: true,
+        });
+        if (!first) return;
+
+        const second = await confirm({
+            title: 'Are you absolutely sure?',
+            message: 'Last chance! This will permanently delete everything.',
+            confirmText: 'Delete everything',
+            danger: true,
+        });
+        if (!second) return;
+
+        try {
+            await deleteAllUserData(user?.uid, user?.email);
+            toast('All data has been deleted. Signing you out…', 'success');
+        } catch (error) {
+            console.error('Delete all data failed:', error);
+            toast('Some cloud data could not be deleted, but local data was cleared. Signing out…', 'error');
+        } finally {
+            await signOut();
+            router.push('/auth/signin');
         }
     };
 
@@ -625,8 +647,8 @@ export default function Settings() {
                                         <label className="relative inline-flex items-center cursor-pointer">
                                             <input
                                                 type="checkbox"
-                                                checked={settings.autoCategorizatio}
-                                                onChange={(e) => setSettings({ ...settings, autoCategorizatio: e.target.checked })}
+                                                checked={settings.autoCategorization}
+                                                onChange={(e) => setSettings({ ...settings, autoCategorization: e.target.checked })}
                                                 className="sr-only peer"
                                             />
                                             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>

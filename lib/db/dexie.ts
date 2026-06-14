@@ -11,6 +11,8 @@ export interface Household {
   createdBy: string;
   createdAt: string;
   members: HouseholdMember[];
+  memberIds: string[]; // flat uid list for Firestore array-contains queries
+  userId?: string;
   settings: {
     currency: string;
     timezone: string;
@@ -59,6 +61,8 @@ export interface InventoryItem {
   location?: string;
   notes?: string;
   imageUrl?: string;
+  isPrivate?: boolean; // Module 11: hide high-value items from other members
+  createdBy?: string;  // Module 11: owner of the item (uid)
   createdAt: string;
   updatedAt: string;
   syncStatus: 'synced' | 'pending' | 'error';
@@ -77,6 +81,7 @@ export interface ShoppingItem {
   addedBy?: string;
   price?: number;
   notes?: string;
+  order?: number; // manual sort position within its category
   createdAt: string;
   updatedAt: string;
   syncStatus: 'synced' | 'pending' | 'error';
@@ -424,6 +429,12 @@ export class PantryPlusDB extends Dexie {
       shopping: '++id, firebaseId, householdId, businessId, name, purchased, syncStatus',
     }).upgrade(async (_trans) => {
       console.log('Upgrading database to version 6 (Business Mode)...');
+    });
+
+    // Version 7: Module 11 privacy — index isPrivate / createdBy on inventory.
+    this.version(7).stores({
+      inventory:
+        '++id, firebaseId, householdId, businessId, name, category, expiryDate, minThreshold, isPrivate, createdBy, syncStatus',
     });
   }
 }

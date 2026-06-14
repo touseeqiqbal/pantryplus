@@ -135,14 +135,26 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
     const localId = await db.businesses.add(business as Business);
 
     if (firestore) {
-      const docRef = await addDoc(collection(firestore, 'businesses'), business);
-      await db.businesses.update(localId, { firebaseId: docRef.id, syncStatus: 'synced' });
-      const updated = await db.businesses.get(localId);
-      if (updated) {
-        setCurrentBusiness(updated);
-        localStorage.setItem('currentBusinessId', docRef.id);
+      try {
+        const docRef = await addDoc(collection(firestore, 'businesses'), business);
+        await db.businesses.update(localId, { firebaseId: docRef.id, syncStatus: 'synced' });
+        const updated = await db.businesses.get(localId);
+        if (updated) {
+          setCurrentBusiness(updated);
+          localStorage.setItem('currentBusinessId', docRef.id);
+        }
+        return docRef.id;
+      } catch (error) {
+        console.error('Error syncing business to Firebase:', error);
+        await db.businesses.update(localId, { syncStatus: 'error' });
       }
-      return docRef.id;
+    }
+
+    // Offline / no Firestore: still activate the locally-created business.
+    const localBusiness = await db.businesses.get(localId);
+    if (localBusiness) {
+      setCurrentBusiness(localBusiness);
+      localStorage.setItem('currentBusinessId', String(localId));
     }
     return localId.toString();
   };

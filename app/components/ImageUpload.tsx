@@ -8,6 +8,7 @@ import {
     XMarkIcon,
     ArrowPathIcon
 } from '@heroicons/react/24/outline';
+import { useUI } from './ui/Toaster';
 
 interface ImageUploadProps {
     currentImage?: string;
@@ -22,6 +23,7 @@ export default function ImageUpload({ currentImage, onImageSelected, onImageRemo
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useUI();
 
     const startCamera = async () => {
         try {
@@ -37,7 +39,7 @@ export default function ImageUpload({ currentImage, onImageSelected, onImageRemo
             setShowCamera(true);
         } catch (error) {
             console.error('Camera access error:', error);
-            alert('Unable to access camera. Please check permissions or use file upload.');
+            toast('Unable to access camera. Please check permissions or use file upload.', 'error');
         }
     };
 

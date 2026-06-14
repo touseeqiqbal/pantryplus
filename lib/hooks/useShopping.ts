@@ -61,6 +61,8 @@ export function useShopping() {
           category: data.category,
           purchased: data.purchased,
           addedBy: data.addedBy,
+          price: data.price,
+          notes: data.notes,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
           syncStatus: 'synced',

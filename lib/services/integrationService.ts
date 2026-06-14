@@ -106,6 +106,77 @@ export async function syncMealPlanToCalendar(
 }
 
 /**
+ * Generate a downloadable .ics (iCalendar) file from a meal plan.
+ *
+ * Unlike the Google Calendar OAuth path, this works entirely offline and can be
+ * imported into Google Calendar, Apple Calendar, or Outlook. Each day produces
+ * colour-hinted Breakfast / Lunch / Dinner events.
+ */
+export function generateMealPlanICS(mealPlan: MealPlanDay[]): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fmt = (d: Date) =>
+        `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(
+            d.getMinutes()
+        )}00`;
+
+    const lines: string[] = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//PantryPlus//Meal Planner//EN',
+        'CALSCALE:GREGORIAN',
+    ];
+
+    const today = new Date();
+
+    mealPlan.forEach((day, index) => {
+        const base = new Date(today);
+        base.setDate(today.getDate() + index);
+
+        const meals: Array<{ label: string; meal: string; hour: number }> = [
+            { label: '🍳 Breakfast', meal: day.breakfast, hour: 8 },
+            { label: '🥗 Lunch', meal: day.lunch, hour: 12 },
+            { label: '🍽️ Dinner', meal: day.dinner, hour: 18 },
+        ];
+
+        meals.forEach(({ label, meal, hour }) => {
+            const start = new Date(base);
+            start.setHours(hour, 0, 0, 0);
+            const end = new Date(start);
+            end.setHours(hour + 1, 0, 0, 0);
+
+            lines.push(
+                'BEGIN:VEVENT',
+                `UID:${fmt(start)}-${label.replace(/\s/g, '')}@pantryplus`,
+                `DTSTART:${fmt(start)}`,
+                `DTEND:${fmt(end)}`,
+                `SUMMARY:${label}: ${meal}`,
+                `DESCRIPTION:Meal plan for ${day.day} (~${Math.round(day.calories / 3)} cal)`,
+                'END:VEVENT'
+            );
+        });
+    });
+
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n');
+}
+
+/**
+ * Trigger a browser download of the meal plan as an .ics file.
+ */
+export function downloadMealPlanICS(mealPlan: MealPlanDay[], filename = 'pantryplus-meals.ics'): void {
+    const ics = generateMealPlanICS(mealPlan);
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+/**
  * Get Google Calendar OAuth URL
  */
 export function getGoogleCalendarAuthUrl(clientId: string, redirectUri: string): string {
@@ -357,32 +428,30 @@ export interface PriceComparison {
 }
 
 export async function comparePrices(items: ShoppingItem[]): Promise<PriceComparison[]> {
-    // Mock implementation - in reality, would query each service's API
-    const basePrice = items.reduce((sum, item) => sum + (item.price || 5) * item.quantity, 0);
+    // The cart subtotal is computed from the user's REAL shopping-list prices.
+    // We have no per-retailer pricing API, so the item subtotal is identical
+    // across services; the comparison reflects each service's delivery fee and
+    // ETA (the genuine, honest differentiator), not invented price markups.
+    const basePrice = items.reduce(
+        (sum, item) => sum + (typeof item.price === 'number' ? item.price : 0) * (item.quantity || 1),
+        0
+    );
 
-    return [
-        {
-            service: 'Instacart',
-            totalPrice: basePrice * 1.1,
-            deliveryFee: 5.99,
-            estimatedTotal: basePrice * 1.1 + 5.99,
-            deliveryTime: '2 hours',
-        },
-        {
-            service: 'Amazon Fresh',
-            totalPrice: basePrice * 1.05,
-            deliveryFee: 0, // Free with Prime
-            estimatedTotal: basePrice * 1.05,
-            deliveryTime: '4 hours',
-        },
-        {
-            service: 'Walmart+',
+    const services = [
+        { service: 'Instacart', deliveryFee: 5.99, deliveryTime: '2 hours' },
+        { service: 'Amazon Fresh', deliveryFee: 0, deliveryTime: '4 hours' }, // Free with Prime
+        { service: 'Walmart+', deliveryFee: 0, deliveryTime: 'Next day' },    // Free with Walmart+
+    ];
+
+    return services
+        .map(({ service, deliveryFee, deliveryTime }) => ({
+            service,
             totalPrice: basePrice,
-            deliveryFee: 0, // Free with Walmart+
-            estimatedTotal: basePrice,
-            deliveryTime: 'Next day',
-        },
-    ].sort((a, b) => a.estimatedTotal - b.estimatedTotal);
+            deliveryFee,
+            estimatedTotal: basePrice + deliveryFee,
+            deliveryTime,
+        }))
+        .sort((a, b) => a.estimatedTotal - b.estimatedTotal);
 }
 
 // ============================================================================
@@ -527,6 +596,8 @@ export async function testIntegration(
 export default {
     // Google Calendar
     syncMealPlanToCalendar,
+    generateMealPlanICS,
+    downloadMealPlanICS,
     getGoogleCalendarAuthUrl,
     exchangeGoogleAuthCode,
 

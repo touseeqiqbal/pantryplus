@@ -24,6 +24,19 @@ export default function ActivityLog() {
         }
     };
 
+    // Proper past-tense phrasing (avoids "joind" / "leaved").
+    const actionVerb = (action: string) => {
+        switch (action) {
+            case 'create': return 'added';
+            case 'update': return 'updated';
+            case 'delete': return 'removed';
+            case 'complete': return 'completed';
+            case 'join': return 'joined';
+            case 'leave': return 'left';
+            default: return action;
+        }
+    };
+
     const formatTime = (timestamp: string) => {
         const date = new Date(timestamp);
         const now = new Date();
@@ -69,7 +82,7 @@ export default function ActivityLog() {
                                             <span className={isMe ? 'text-indigo-600 dark:text-indigo-400 font-bold' : ''}>
                                                 {isMe ? 'You' : userName}
                                             </span>{' '}
-                                            {activity.action}d{' '}
+                                            {actionVerb(activity.action)}{' '}
                                             <span className="font-semibold">{activity.entityName}</span>
                                         </p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">

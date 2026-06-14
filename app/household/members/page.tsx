@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useHousehold } from '@/lib/hooks/useHousehold';
+import { useUI } from '../../components/ui/Toaster';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 
@@ -17,6 +18,7 @@ export default function HouseholdMembers() {
 
     const { user } = useAuth();
     const { currentHousehold, inviteMember, removeMember, leaveHousehold } = useHousehold();
+    const { toast, confirm } = useUI();
     const router = useRouter();
 
     useEffect(() => {
@@ -51,22 +53,34 @@ export default function HouseholdMembers() {
     };
 
     const handleRemove = async (userId: string) => {
-        if (confirm('Are you sure you want to remove this member?')) {
+        if (await confirm({
+            title: 'Remove member',
+            message: 'Are you sure you want to remove this member?',
+            confirmText: 'Remove',
+            danger: true,
+        })) {
             try {
                 await removeMember(userId);
+                toast('Member removed', 'success');
             } catch (error) {
                 console.error('Error removing member:', error);
+                toast(error instanceof Error ? error.message : 'Failed to remove member', 'error');
             }
         }
     };
 
     const handleLeave = async () => {
-        if (confirm('Are you sure you want to leave this household?')) {
+        if (await confirm({
+            title: 'Leave household',
+            message: 'Are you sure you want to leave this household?',
+            confirmText: 'Leave',
+            danger: true,
+        })) {
             try {
                 await leaveHousehold();
                 router.push('/household/setup');
             } catch (error) {
-                alert(error instanceof Error ? error.message : 'Failed to leave household');
+                toast(error instanceof Error ? error.message : 'Failed to leave household', 'error');
             }
         }
     };

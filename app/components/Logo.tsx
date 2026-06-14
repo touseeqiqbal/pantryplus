@@ -36,6 +36,7 @@ export default function Logo({ size = 'md', className = '', showText = true }: L
             src="/logo.png"
             alt=""
             fill
+            sizes={`${current.icon}px`}
             className="object-contain"
             priority
           />

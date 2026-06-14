@@ -1,37 +1,45 @@
-// @ts-nocheck
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useChat } from '@ai-sdk/react';
-import type { UIMessage } from '@ai-sdk/react';
 import { useInventory } from '@/lib/hooks/useInventory';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  SparklesIcon, 
-  XMarkIcon, 
+import {
+  SparklesIcon,
+  XMarkIcon,
   PaperAirplaneIcon,
   ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useAppMode } from '@/lib/hooks/useAppMode';
 
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export default function AIChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { items: inventory } = useInventory();
   const { currentHousehold } = useHousehold();
   const { isBusiness } = useAppMode();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const inventoryContext = inventory.map(item => ({
-    name: item.name,
-    quantity: item.quantity,
-    unit: item.unit,
-    category: item.category,
-    location: item.location || 'pantry',
-    daysUntilExpiry: item.expiryDate 
-      ? Math.ceil((new Date(item.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-      : null
-  }));
+  const buildInventoryContext = () =>
+    inventory.map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      category: item.category,
+      location: item.location || 'pantry',
+      daysUntilExpiry: item.expiryDate
+        ? Math.ceil((new Date(item.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        : null
+    }));
 
   const householdContext = {
     isBusiness,
@@ -39,17 +47,76 @@ export default function AIChatWidget() {
     dietaryRestrictions: currentHousehold?.settings?.dietaryProfile || 'None'
   };
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    body: {
-      inventoryContext,
-      householdContext
-    }
-  });
-
   // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isLoading]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed || isLoading) return;
+
+    setError(null);
+    const userMessage: ChatMessage = {
+      id: `${Date.now()}-user`,
+      role: 'user',
+      content: trimmed,
+    };
+    const history = [...messages, userMessage];
+    setMessages(history);
+    setInput('');
+    setIsLoading(true);
+
+    const assistantId = `${Date.now()}-assistant`;
+    let assistantStarted = false;
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: history.map(({ role, content }) => ({ role, content })),
+          inventoryContext: buildInventoryContext(),
+          householdContext,
+        }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('Request failed');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantText = '';
+
+      // Read the text stream chunk-by-chunk and progressively render the reply.
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        assistantText += decoder.decode(value, { stream: true });
+
+        if (!assistantStarted) {
+          assistantStarted = true;
+          setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: assistantText }]);
+        } else {
+          setMessages(prev =>
+            prev.map(m => (m.id === assistantId ? { ...m, content: assistantText } : m))
+          );
+        }
+      }
+
+      if (!assistantStarted) {
+        throw new Error('Empty response');
+      }
+    } catch (err) {
+      console.error('AI Chat Widget Error:', err);
+      setError('Connection error. Please check your API keys or network.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <>
@@ -82,7 +149,7 @@ export default function AIChatWidget() {
                 <SparklesIcon className="h-6 w-6 text-primary-200" />
                 <h3 className="font-bold text-lg tracking-tight">PantryBrain</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setIsOpen(false)}
                 className="p-1 hover:bg-white/20 rounded-full transition-colors"
               >
@@ -104,7 +171,7 @@ export default function AIChatWidget() {
                 </div>
               )}
 
-              {messages.map((m: UIMessage) => (
+              {messages.map((m) => (
                 <div
                   key={m.id}
                   className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -120,7 +187,7 @@ export default function AIChatWidget() {
                   </div>
                 </div>
               ))}
-              
+
               {isLoading && (
                 <div className="flex justify-start">
                   <div className="bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-2xl rounded-bl-none px-4 py-3 flex space-x-2">
@@ -133,7 +200,7 @@ export default function AIChatWidget() {
 
               {error && (
                 <div className="p-3 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-sm rounded-lg text-center">
-                  Connection error. Please check your API keys or network.
+                  {error}
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -141,7 +208,7 @@ export default function AIChatWidget() {
 
             {/* Input Area */}
             <div className="p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shrink-0">
-              <form 
+              <form
                 onSubmit={handleSubmit}
                 className="flex items-end space-x-2 relative"
               >
@@ -149,7 +216,7 @@ export default function AIChatWidget() {
                   <input
                     type="text"
                     value={input}
-                    onChange={handleInputChange}
+                    onChange={(e) => setInput(e.target.value)}
                     placeholder="Ask me anything..."
                     disabled={isLoading}
                     className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 transition-shadow"

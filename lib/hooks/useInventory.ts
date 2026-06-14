@@ -32,6 +32,11 @@ export function useInventory() {
   const contextId = isBusiness ? currentBusiness?.firebaseId : currentHousehold?.firebaseId;
   const contextField = isBusiness ? 'businessId' : 'householdId';
 
+  // Module 11: hide items another member marked Private. The owner still sees
+  // their own private items; everyone sees non-private items.
+  const visibleToUser = (list: InventoryItem[]) =>
+    list.filter(item => !item.isPrivate || !item.createdBy || item.createdBy === user?.uid);
+
   // Load items from IndexedDB on mount or context change
   useEffect(() => {
     const loadItems = async () => {
@@ -45,11 +50,12 @@ export function useInventory() {
         .where(contextField)
         .equals(contextId)
         .toArray();
-      setItems(localItems);
+      setItems(visibleToUser(localItems));
       setLoading(false);
     };
     loadItems();
-  }, [contextId, contextField, isBusiness]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contextId, contextField, isBusiness, user]);
 
   // Sync with Firebase
   useEffect(() => {
@@ -77,6 +83,8 @@ export function useInventory() {
           location: data.location,
           notes: data.notes,
           imageUrl: data.imageUrl,
+          isPrivate: data.isPrivate || false,
+          createdBy: data.createdBy || '',
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
           syncStatus: 'synced',
@@ -94,10 +102,11 @@ export function useInventory() {
         .where(contextField)
         .equals(contextId)
         .toArray();
-      setItems(localItems);
+      setItems(visibleToUser(localItems));
     });
 
     return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, contextId, contextField]);
 
   const addItem = async (item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt' | 'syncStatus' | 'householdId' | 'businessId' | 'firebaseId'>) => {
@@ -107,6 +116,7 @@ export function useInventory() {
     const newItem: Partial<InventoryItem> = {
       ...item,
       [contextField]: contextId,
+      createdBy: user?.uid || '',
       createdAt: now,
       updatedAt: now,
       syncStatus: user ? 'pending' : 'synced',
@@ -128,11 +138,13 @@ export function useInventory() {
       }
     }
 
+    logActivity('create', 'inventory', item.name);
+
     const updatedItems = await db.inventory
       .where(contextField)
       .equals(contextId)
       .toArray();
-    setItems(updatedItems);
+    setItems(visibleToUser(updatedItems));
   };
 
   const updateItem = async (id: number, updates: Partial<InventoryItem>) => {
@@ -161,11 +173,13 @@ export function useInventory() {
       }
     }
 
+    logActivity('update', 'inventory', updates.name || item.name);
+
     const updatedItems = await db.inventory
       .where(contextField)
       .equals(contextId || '')
       .toArray();
-    setItems(updatedItems);
+    setItems(visibleToUser(updatedItems));
   };
 
   const deleteItem = async (id: number) => {
@@ -182,11 +196,13 @@ export function useInventory() {
       }
     }
 
+    logActivity('delete', 'inventory', item.name);
+
     const updatedItems = await db.inventory
       .where(contextField)
       .equals(contextId || '')
       .toArray();
-    setItems(updatedItems);
+    setItems(visibleToUser(updatedItems));
   };
 
   return {

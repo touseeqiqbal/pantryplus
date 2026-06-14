@@ -27,6 +27,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { ShoppingItem } from '@/lib/db/dexie';
 import ThemeToggle from '../components/ThemeToggle';
 import VoiceInput from '../components/VoiceInput';
+import { useUI } from '../components/ui/Toaster';
 import {
   PlusIcon,
   CheckCircleIcon,
@@ -184,6 +185,7 @@ export default function Shopping() {
   const { items: shoppingItems, loading, addItem, updateItem, deleteItem } = useShopping();
   const { items: inventoryItems, addItem: addToInventory } = useInventory();
   const { currentHousehold } = useHousehold();
+  const { toast, confirm } = useUI();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -234,6 +236,10 @@ export default function Shopping() {
   const purchasedItems = shoppingItems.filter(item => item.purchased);
 
   // Group items by category
+  // Respect any manual drag-order; items without one fall back to insertion order.
+  const sortByOrder = (a: ShoppingItem, b: ShoppingItem) =>
+    (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER);
+
   const groupedActiveItems = groupByCategory
     ? activeItems.reduce((acc, item) => {
       const category = item.category || 'Uncategorized';
@@ -242,11 +248,10 @@ export default function Shopping() {
       return acc;
     }, {} as Record<string, ShoppingItem[]>)
     : { 'All Items': activeItems };
+  Object.values(groupedActiveItems).forEach(list => list.sort(sortByOrder));
 
-  // Calculate total
-  const total = shoppingItems
-    .filter(item => item.purchased && item.price)
-    .reduce((sum, item) => sum + (item.price || 0), 0);
+  // Estimated total of the items still to buy (matches the "items to buy" label).
+  const total = activeItems.reduce((sum, item) => sum + (item.price || 0), 0);
 
   // Smart suggestions from inventory
   const lowStockItems = inventoryItems.filter(
@@ -256,7 +261,7 @@ export default function Shopping() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentHousehold) {
-      alert('Please select or create a household first');
+      toast('Please select or create a household first', 'info');
       router.push('/household/setup');
       return;
     }
@@ -298,7 +303,7 @@ export default function Shopping() {
       await updateItem(item.id, { purchased: newPurchasedStatus });
 
       // If marking as purchased, optionally add to inventory
-      if (newPurchasedStatus && confirm('Add this item to inventory?')) {
+      if (newPurchasedStatus && (await confirm({ message: 'Add this item to your inventory?', confirmText: 'Add' }))) {
         await addToInventory({
           name: item.name,
           category: item.category || 'Other',
@@ -316,16 +321,23 @@ export default function Shopping() {
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-    if (over && active.id !== over.id) {
-      const oldIndex = activeItems.findIndex(item => item.id === active.id);
-      const newIndex = activeItems.findIndex(item => item.id === over.id);
+    // Reorder happens within a single category group (each has its own
+    // SortableContext). Persist the new positions via the `order` field.
+    const dragged = activeItems.find(item => item.id === active.id);
+    if (!dragged) return;
+    const category = (groupByCategory ? dragged.category || 'Uncategorized' : 'All Items');
+    const group = (groupedActiveItems[category] || []);
 
-      const newOrder = arrayMove(activeItems, oldIndex, newIndex);
+    const oldIndex = group.findIndex(item => item.id === active.id);
+    const newIndex = group.findIndex(item => item.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
 
-      // Update order in database (you'd need to add an 'order' field to ShoppingItem)
-      // For now, this just reorders visually
-    }
+    const reordered = arrayMove(group, oldIndex, newIndex);
+    await Promise.all(
+      reordered.map((item, idx) => (item.id ? updateItem(item.id, { order: idx }) : Promise.resolve()))
+    );
   };
 
   const toggleCategory = (category: string) => {
@@ -343,7 +355,7 @@ export default function Shopping() {
   const getAddedByEmail = (item: ShoppingItem) => {
     if (!item.addedBy || !currentHousehold) return undefined;
     const member = currentHousehold.members.find(m => m.userId === item.addedBy);
-    return member?.email.split('@')[0];
+    return member?.email?.split('@')[0];
   };
 
   return (

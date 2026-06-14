@@ -9,6 +9,7 @@ import {
     ClockIcon,
     MapPinIcon,
 } from '@heroicons/react/24/outline';
+import { useUI } from './ui/Toaster';
 
 interface SwipeableItemCardProps {
     item: InventoryItem;
@@ -19,6 +20,7 @@ interface SwipeableItemCardProps {
 export default function SwipeableItemCard({ item, onEdit, onDelete }: SwipeableItemCardProps) {
     const [dragX, setDragX] = useState(0);
     const [showActions, setShowActions] = useState(false);
+    const { confirm } = useUI();
 
     const isExpiringSoon = item.expiryDate &&
         Math.floor((new Date(item.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 7;
@@ -42,8 +44,13 @@ export default function SwipeableItemCard({ item, onEdit, onDelete }: SwipeableI
         }
     };
 
-    const handleDelete = () => {
-        if (item.id && confirm('Are you sure you want to delete this item?')) {
+    const handleDelete = async () => {
+        if (item.id && (await confirm({
+            title: 'Delete item',
+            message: `Delete "${item.name}"?`,
+            confirmText: 'Delete',
+            danger: true,
+        }))) {
             onDelete(item.id);
         }
     };

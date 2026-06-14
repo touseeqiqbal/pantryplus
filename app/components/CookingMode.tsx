@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RecipeDetails, Step } from '@/lib/services/recipeService';
 import {
@@ -26,8 +26,17 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
     const [aiQuery, setAiQuery] = useState('');
     const [aiResponse, setAiResponse] = useState('');
     const [isAskingAi, setIsAskingAi] = useState(false);
+    const intervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
 
-    const steps = recipe.analyzedInstructions[0]?.steps || [];
+    // Clear any running timers when the cooking session closes/unmounts.
+    useEffect(() => {
+        return () => {
+            intervalsRef.current.forEach(clearInterval);
+            intervalsRef.current = [];
+        };
+    }, []);
+
+    const steps = recipe.analyzedInstructions?.[0]?.steps || [];
 
     const toggleStepComplete = (stepNumber: number) => {
         setCompletedSteps(prev => {
@@ -61,6 +70,7 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
                 return newMap;
             });
         }, 1000);
+        intervalsRef.current.push(interval);
     };
 
     const toggleTimer = (stepNumber: number) => {
@@ -102,6 +112,33 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
             setAiQuery('');
         }
     };
+
+    // Guard: some recipes (e.g. demo/import data) have no parsed step list.
+    if (steps.length === 0) {
+        return (
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[1500] flex items-center justify-center p-6"
+            >
+                <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 max-w-md w-full text-center">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                        {recipe.title}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">
+                        Step-by-step instructions aren&apos;t available for this recipe yet.
+                    </p>
+                    <button
+                        onClick={onClose}
+                        className="px-6 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors"
+                    >
+                        Close
+                    </button>
+                </div>
+            </motion.div>
+        );
+    }
 
     const currentStepData = steps[currentStep];
     const progress = ((currentStep + 1) / steps.length) * 100;

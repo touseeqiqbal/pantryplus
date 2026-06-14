@@ -21,6 +21,7 @@ import {
 import { useState } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useAppMode } from '@/lib/hooks/useAppMode';
+import { useShopping } from '@/lib/hooks/useShopping';
 
 interface NavItem {
     name: string;
@@ -35,7 +36,11 @@ export default function BottomNav() {
     const router = useRouter();
     const { user, loading } = useAuth();
     const { mode, toggleMode, isBusiness } = useAppMode();
+    const { items: shoppingList } = useShopping();
     const [showMore, setShowMore] = useState(false);
+
+    // Real count of items still to buy (drives the Shopping tab badge).
+    const shoppingToBuy = shoppingList.filter(i => !i.purchased).length;
 
     // Hide navigation on auth pages or when user is not logged in
     const isAuthPage = pathname?.startsWith('/auth');
@@ -61,7 +66,7 @@ export default function BottomNav() {
             href: '/shopping',
             icon: ShoppingCartIcon,
             iconSolid: ShoppingCartIconSolid,
-            badge: 0, // Will be populated from context
+            badge: shoppingToBuy,
         },
         {
             name: 'Recipes',

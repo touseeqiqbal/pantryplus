@@ -16,10 +16,11 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { yieldService } from '@/lib/services/yieldService';
 import { AnimatePresence } from 'framer-motion';
+import { db } from '@/lib/db/dexie';
 
 export default function BusinessDashboard() {
   const { currentBusiness, currentBranch, createBusiness, loading } = useBusiness();
@@ -36,6 +37,29 @@ export default function BusinessDashboard() {
   const [isProcessingSale, setIsProcessingSale] = useState(false);
   
   const { user } = useAuth();
+
+  // Real waste totals from recorded yield logs.
+  const [wasteStats, setWasteStats] = useState<{ events: number; units: number }>({ events: 0, units: 0 });
+
+  useEffect(() => {
+    const bizId = currentBusiness?.firebaseId;
+    if (!bizId) {
+      setWasteStats({ events: 0, units: 0 });
+      return;
+    }
+    db.yieldLogs
+      .where('businessId')
+      .equals(bizId)
+      .toArray()
+      .then(logs => {
+        const waste = logs.filter(l => l.type === 'waste');
+        setWasteStats({
+          events: waste.length,
+          units: waste.reduce((s, l) => s + (l.quantity || 0), 0),
+        });
+      })
+      .catch(() => setWasteStats({ events: 0, units: 0 }));
+  }, [currentBusiness, menuItems]);
 
   if (loading) return <div>Loading business data...</div>;
 
@@ -104,6 +128,15 @@ export default function BusinessDashboard() {
 
   const lowStock = items.filter(i => i.minThreshold && i.quantity <= i.minThreshold).length;
 
+  // Real cost/margin from menu items that have both a price and a cost price.
+  const menuWithCost = menuItems.filter(m => (m.price || 0) > 0 && (m.costPrice || 0) > 0);
+  const avgFoodCostPct = menuWithCost.length
+    ? (menuWithCost.reduce((s, m) => s + (m.costPrice! / m.price), 0) / menuWithCost.length) * 100
+    : null;
+  const profitMarginPct = avgFoodCostPct != null ? 100 - avgFoodCostPct : null;
+  const menuValue = menuItems.reduce((s, m) => s + (m.price || 0), 0);
+  const fmtPct = (v: number | null) => (v != null ? `${v.toFixed(1)}%` : '—');
+
   return (
     <div className="space-y-6">
       {/* Business Hero */}
@@ -130,8 +163,8 @@ export default function BusinessDashboard() {
                     <p className="text-2xl font-bold text-red-200">{lowStock}</p>
                 </div>
                 <div className="p-3 bg-green-500/20 rounded-2xl border border-green-500/30">
-                    <p className="text-xs text-green-300 font-medium uppercase">Daily Prep</p>
-                    <p className="text-2xl font-bold text-green-200">Ready</p>
+                    <p className="text-xs text-green-300 font-medium uppercase">Menu Value</p>
+                    <p className="text-2xl font-bold text-green-200">${menuValue.toFixed(0)}</p>
                 </div>
             </div>
         </div>
@@ -147,10 +180,12 @@ export default function BusinessDashboard() {
               <div className="p-2 bg-primary-50 dark:bg-primary-900/30 rounded-xl text-primary-600">
                 <ArrowTrendingUpIcon className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">+12% vs LW</span>
            </div>
-           <p className="text-sm text-gray-500 dark:text-gray-400">Est. Food Cost %</p>
-           <h3 className="text-3xl font-black text-gray-900 dark:text-white">28.4%</h3>
+           <p className="text-sm text-gray-500 dark:text-gray-400">Avg Food Cost %</p>
+           <h3 className="text-3xl font-black text-gray-900 dark:text-white">{fmtPct(avgFoodCostPct)}</h3>
+           <p className="text-xs text-gray-400 mt-1">
+              {menuWithCost.length > 0 ? `From ${menuWithCost.length} costed dish(es)` : 'Add dish cost prices to calculate'}
+           </p>
         </div>
 
         <div className="card p-6 border-l-4 border-l-red-500">
@@ -160,7 +195,10 @@ export default function BusinessDashboard() {
               </div>
            </div>
            <p className="text-sm text-gray-500 dark:text-gray-400">Recorded Waste</p>
-           <h3 className="text-3xl font-black text-gray-900 dark:text-white">$142.00</h3>
+           <h3 className="text-3xl font-black text-gray-900 dark:text-white">{wasteStats.events}</h3>
+           <p className="text-xs text-gray-400 mt-1">
+              {wasteStats.events > 0 ? `${wasteStats.units} unit(s) logged` : 'No waste logged yet'}
+           </p>
         </div>
 
         <div className="card p-6 border-l-4 border-l-green-500">
@@ -170,7 +208,8 @@ export default function BusinessDashboard() {
               </div>
            </div>
            <p className="text-sm text-gray-500 dark:text-gray-400">Profit Margin</p>
-           <h3 className="text-3xl font-black text-gray-900 dark:text-white">72.6%</h3>
+           <h3 className="text-3xl font-black text-gray-900 dark:text-white">{fmtPct(profitMarginPct)}</h3>
+           <p className="text-xs text-gray-400 mt-1">Based on dish cost vs. price</p>
         </div>
       </div>
 
@@ -247,7 +286,7 @@ export default function BusinessDashboard() {
                            >
                               <option value="">Choose a dish...</option>
                               {menuItems.map(item => (
-                                 <option key={item.firebaseId} value={item.firebaseId}>{item.name} - ${item.price.toFixed(2)}</option>
+                                 <option key={item.firebaseId} value={item.firebaseId}>{item.name} - ${(item.price ?? 0).toFixed(2)}</option>
                               ))}
                            </select>
                         </div>

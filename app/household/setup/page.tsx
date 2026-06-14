@@ -10,17 +10,18 @@ export default function HouseholdSetup() {
     const [householdName, setHouseholdName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const { createHousehold, currentHousehold } = useHousehold();
     const router = useRouter();
 
     useEffect(() => {
+        if (authLoading) return; // wait for auth to resolve before redirecting
         if (!user) {
             router.push('/auth/signin');
         } else if (currentHousehold) {
             router.push('/dashboard');
         }
-    }, [user, currentHousehold, router]);
+    }, [user, currentHousehold, authLoading, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -36,6 +37,14 @@ export default function HouseholdSetup() {
             setLoading(false);
         }
     };
+
+    if (authLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+                <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     if (!user || currentHousehold) return null;
 

@@ -9,11 +9,13 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from '../components/ThemeToggle';
 import CookingMode from '../components/CookingMode';
+import { useUI } from '../components/ui/Toaster';
 import {
   findRecipesByIngredients,
   getRecipeDetails,
   searchRecipes,
   calculateMatchScore,
+  isRecipeApiConfigured,
   Recipe,
   RecipeDetails,
 } from '@/lib/services/recipeService';
@@ -36,6 +38,7 @@ export default function Recipes() {
   const { items: inventoryItems } = useInventory();
   const { addItem: addToShopping } = useShopping();
   const { currentHousehold } = useHousehold();
+  const { toast } = useUI();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -46,6 +49,7 @@ export default function Recipes() {
   const [servings, setServings] = useState(4);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importUrl, setImportUrl] = useState('');
+  const recipeApiConfigured = isRecipeApiConfigured();
 
   useEffect(() => {
     setMounted(true);
@@ -77,6 +81,17 @@ export default function Recipes() {
     if (!searchQuery.trim()) return;
 
     setLoading(true);
+
+    // In demo mode (no live recipe API), search the curated sample recipes
+    // locally so the search box still works instead of returning nothing.
+    if (!recipeApiConfigured) {
+      const all = await findRecipesByIngredients(inventoryItems.map(i => i.name), 24);
+      const q = searchQuery.toLowerCase();
+      setRecipes(all.filter(r => r.title.toLowerCase().includes(q)));
+      setLoading(false);
+      return;
+    }
+
     const results = await searchRecipes(searchQuery, 12);
     setRecipes(results.results.map(r => ({
       id: r.id,
@@ -107,19 +122,28 @@ export default function Recipes() {
     if (!selectedRecipe) return;
     
     if (!currentHousehold) {
-      alert('Please select or create a household first');
+      toast('Please select or create a household first', 'info');
       router.push('/household/setup');
       return;
     }
 
     const scaleFactor = servings / selectedRecipe.servings;
 
-    for (const ingredient of selectedRecipe.extendedIngredients) {
-      const scaledAmount = ingredient.amount * scaleFactor;
+    // Only add ingredients the household doesn't already have in inventory.
+    const inInventory = new Set(inventoryItems.map(i => i.name.toLowerCase()));
+    const missing = selectedRecipe.extendedIngredients.filter(
+      ing => !inInventory.has(ing.name.toLowerCase())
+    );
 
+    if (missing.length === 0) {
+      toast('You already have all the ingredients for this recipe!', 'success');
+      return;
+    }
+
+    for (const ingredient of missing) {
       await addToShopping({
         name: ingredient.name,
-        quantity: scaledAmount,
+        quantity: ingredient.amount * scaleFactor,
         unit: ingredient.unit,
         category: ingredient.aisle,
         notes: `For ${selectedRecipe.title}`,
@@ -128,13 +152,13 @@ export default function Recipes() {
       });
     }
 
-    alert(`Added ${selectedRecipe.extendedIngredients.length} ingredients to shopping list!`);
+    toast(`Added ${missing.length} missing ingredient(s) to your shopping list!`, 'success');
   };
 
   const handleImportFromUrl = async () => {
     // This would require a backend service to scrape recipe data
     // For now, show a placeholder
-    alert('Recipe import from URL will be available soon! This requires a backend service to scrape recipe data.');
+    toast('Recipe import from URL is coming soon — use the AI recipe generator in the Meal Planner for now.', 'info');
     setShowImportModal(false);
     setImportUrl('');
   };
@@ -201,6 +225,17 @@ export default function Recipes() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
+        {/* Demo-data notice when no live recipe API key is configured */}
+        {!recipeApiConfigured && (
+          <div className="mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm flex items-start gap-2">
+            <span className="text-lg leading-none">ℹ️</span>
+            <p>
+              Showing <strong>sample recipes</strong>. Add a <code>NEXT_PUBLIC_SPOONACULAR_API_KEY</code> to
+              <code> .env.local</code> for live recipe search, or use the AI recipe generator in the Meal Planner.
+            </p>
+          </div>
+        )}
+
         {/* Available Ingredients */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

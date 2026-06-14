@@ -213,17 +213,17 @@ export default function Dashboard() {
                   {/* Feature 1: Predictive Food Intelligence */}
                   <div className="card p-6 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border border-orange-200 dark:border-orange-800/50">
                     <h3 className="text-lg font-bold text-orange-900 dark:text-orange-300 mb-1 flex items-center gap-2">
-                      🧠 Predictive Brain
+                      🧠 Expiry Watch
                     </h3>
                     <p className="text-sm text-orange-700 dark:text-orange-400 mb-4">
-                      AI-driven insights based on your household's usage decay.
+                      Items approaching their expiry date in the next 7 days.
                     </p>
                     {expiringItems > 0 ? (
                       <div className="flex items-center gap-3 p-3 bg-white/60 dark:bg-black/20 rounded-lg">
                         <ExclamationTriangleIcon className="w-8 h-8 text-orange-500" />
                         <div className="text-sm text-orange-900 dark:text-orange-200">
-                          <strong className="block">High Probability of Rot</strong>
-                          Based on your typical eating speeds, {expiringItems} items will likely spoil before you eat them. Ask the AI Chat to plan a meal for them!
+                          <strong className="block">Expiring Soon</strong>
+                          {expiringItems} item(s) will expire within a week. Ask the AI Chat to plan a meal for them!
                         </div>
                       </div>
                     ) : (

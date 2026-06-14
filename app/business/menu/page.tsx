@@ -19,6 +19,7 @@ export default function MenuManagementPage() {
   const { menuItems, addMenuItem, updateMenuItem, deleteMenuItem, loading } = useMenuItems();
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeOnly, setActiveOnly] = useState(false);
   const [selectedMenuItemId, setSelectedMenuItemId] = useState<string | null>(null);
   
   // New Item State
@@ -32,10 +33,12 @@ export default function MenuManagementPage() {
 
   const categories = ['Mains', 'Starters', 'Desserts', 'Beverages', 'Sides', 'Specials'];
 
-  const filteredItems = menuItems.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredItems = menuItems.filter(item => {
+    const matchesSearch =
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch && (!activeOnly || item.isActive);
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
@@ -72,7 +75,15 @@ export default function MenuManagementPage() {
                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                 />
              </div>
-             <button className="p-3 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-xl text-gray-600 dark:text-gray-300">
+             <button
+                onClick={() => setActiveOnly(v => !v)}
+                title={activeOnly ? 'Showing active dishes only' : 'Show active dishes only'}
+                className={`p-3 border rounded-xl transition-colors ${
+                   activeOnly
+                      ? 'bg-primary-600 border-primary-600 text-white'
+                      : 'bg-gray-50 dark:bg-gray-700 border-gray-100 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+                }`}
+             >
                 <AdjustmentsHorizontalIcon className="w-6 h-6" />
              </button>
           </div>
@@ -107,7 +118,7 @@ export default function MenuManagementPage() {
                       </span>
                       <div className="flex items-center gap-1 text-sm font-bold text-gray-900 dark:text-white">
                          <CurrencyDollarIcon className="w-4 h-4 text-green-500" />
-                         {item.price.toFixed(2)}
+                         {(item.price ?? 0).toFixed(2)}
                       </div>
                    </div>
                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{item.name}</h3>
@@ -125,15 +136,24 @@ export default function MenuManagementPage() {
                       </button>
                    </div>
                 </div>
-                {/* Progress Bar for margin if costPrice exists */}
-                {item.costPrice && (
-                   <div className="h-1 w-full bg-gray-100 dark:bg-gray-700">
-                      <div 
-                         className="h-full bg-green-500" 
-                         style={{ width: `${Math.min(100, (item.costPrice / item.price) * 100)}%` }} 
-                      />
-                   </div>
-                )}
+                {/* Profit margin bar (higher = healthier). */}
+                {item.costPrice && item.price > 0 && (() => {
+                   const marginPct = Math.max(0, Math.min(100, (1 - item.costPrice / item.price) * 100));
+                   const tone = marginPct >= 60 ? 'green' : marginPct >= 30 ? 'yellow' : 'red';
+                   const barColor = tone === 'green' ? 'bg-green-500' : tone === 'yellow' ? 'bg-yellow-500' : 'bg-red-500';
+                   const textColor = tone === 'green' ? 'text-green-600' : tone === 'yellow' ? 'text-yellow-600' : 'text-red-600';
+                   return (
+                      <div className="px-6 pb-4">
+                         <div className="flex justify-between text-[10px] font-semibold mb-1">
+                            <span className="text-gray-400 uppercase tracking-wider">Margin</span>
+                            <span className={textColor}>{marginPct.toFixed(0)}%</span>
+                         </div>
+                         <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div className={`h-full ${barColor}`} style={{ width: `${marginPct}%` }} />
+                         </div>
+                      </div>
+                   );
+                })()}
               </motion.div>
             ))}
           </div>
@@ -183,13 +203,25 @@ export default function MenuManagementPage() {
                         </div>
                         <div>
                            <label className="block text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Price ($)</label>
-                           <input 
+                           <input
                               type="number"
+                              min="0"
                               value={newItem.price}
-                              onChange={(e) => setNewItem({...newItem, price: parseFloat(e.target.value)})}
+                              onChange={(e) => setNewItem({...newItem, price: parseFloat(e.target.value) || 0})}
                               className="w-full p-4 bg-gray-50 dark:bg-gray-700 border-none rounded-2xl outline-none focus:ring-2 focus:ring-primary-500"
                            />
                         </div>
+                     </div>
+                     <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Cost Price ($) — for margin</label>
+                        <input
+                           type="number"
+                           min="0"
+                           value={newItem.costPrice}
+                           onChange={(e) => setNewItem({...newItem, costPrice: parseFloat(e.target.value) || 0})}
+                           className="w-full p-4 bg-gray-50 dark:bg-gray-700 border-none rounded-2xl outline-none focus:ring-2 focus:ring-primary-500"
+                           placeholder="Raw ingredient cost"
+                        />
                      </div>
                   </div>
                   

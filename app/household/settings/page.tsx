@@ -31,9 +31,10 @@ export default function HouseholdSettings() {
 
     useEffect(() => {
         if (currentHousehold) {
-            setCurrency(currentHousehold.settings.currency);
-            setTimezone(currentHousehold.settings.timezone);
-            setNotifications(currentHousehold.settings.notifications);
+            // Guard against older household records that may lack a settings object.
+            setCurrency(currentHousehold.settings?.currency ?? 'USD');
+            setTimezone(currentHousehold.settings?.timezone ?? 'UTC');
+            setNotifications(currentHousehold.settings?.notifications ?? true);
         }
     }, [currentHousehold]);
 

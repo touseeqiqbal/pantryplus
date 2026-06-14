@@ -25,7 +25,11 @@ export default function ChefsPrepDashboard() {
 
     useEffect(() => {
         const loadPrep = async () => {
-            if (!currentBusiness?.firebaseId) return;
+            if (!currentBusiness?.firebaseId) {
+                setPrepList([]);
+                setIsLoading(false);
+                return;
+            }
             setIsLoading(true);
             try {
                 const list = await prepService.generateDailyPrepList(currentBusiness.firebaseId);
@@ -83,8 +87,8 @@ export default function ChefsPrepDashboard() {
                         
                         <div className="flex gap-3">
                             <div className="p-4 bg-white/5 rounded-2xl border border-white/10 text-center min-w-[120px]">
-                                <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Shift Target</p>
-                                <p className="text-2xl font-black">140<span className="text-sm font-normal text-gray-500 ml-1">plates</span></p>
+                                <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Prep Items</p>
+                                <p className="text-2xl font-black">{prepList.length}<span className="text-sm font-normal text-gray-500 ml-1">items</span></p>
                             </div>
                             <div className="p-4 bg-primary-600 rounded-2xl text-center min-w-[120px] shadow-xl shadow-primary-900/20">
                                 <p className="text-[10px] text-primary-200 font-bold uppercase mb-1">Prep Completion</p>
@@ -95,13 +99,16 @@ export default function ChefsPrepDashboard() {
                         </div>
                     </div>
 
-                    {/* AI Forecast Banner */}
+                    {/* Forecast Banner — derived from real BOM + sales history */}
                     <div className="mt-8 p-4 bg-indigo-600/20 border border-indigo-500/30 rounded-2xl flex items-center gap-4">
                         <div className="p-2 bg-indigo-500 rounded-lg">
                             <SparklesIcon className="w-5 h-5 text-white" />
                         </div>
                         <div className="text-sm">
-                            <span className="font-bold text-indigo-300">AI Shift Forecast:</span> High demand expected for <span className="italic">"Signature Burgers"</span>. Prep list has been adjusted +15% for safety.
+                            <span className="font-bold text-indigo-300">Demand Forecast:</span>{' '}
+                            {prepList.length > 0
+                                ? <>{prepList.length} ingredient{prepList.length === 1 ? '' : 's'} to prep across {stations.length - 1} station{stations.length - 1 === 1 ? '' : 's'}, based on your sales history and recipe BOM.</>
+                                : <>No active dishes mapped yet — add menu items and ingredient mappings to generate a prep list.</>}
                         </div>
                     </div>
 
@@ -129,6 +136,16 @@ export default function ChefsPrepDashboard() {
                     <div className="flex flex-col items-center justify-center py-20 grayscale brightness-200">
                         <ArrowPathIcon className="w-12 h-12 animate-spin text-primary-500 mb-4" />
                         <p className="text-gray-500 font-medium tracking-widest text-xs uppercase">Crunching BOM & Sales Forecast...</p>
+                    </div>
+                ) : prepList.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                        <BeakerIcon className="w-12 h-12 text-gray-600 mb-4" />
+                        <h3 className="text-lg font-bold mb-1">No prep list yet</h3>
+                        <p className="text-gray-500 text-sm max-w-sm">
+                            {currentBusiness
+                                ? 'Add active menu items and map their ingredients to generate a daily prep list.'
+                                : 'Set up a business in Business Mode to use the prep dashboard.'}
+                        </p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

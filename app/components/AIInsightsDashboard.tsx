@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useInventory } from '@/lib/hooks/useInventory';
 import { useShopping } from '@/lib/hooks/useShopping';
@@ -36,15 +37,32 @@ import {
 import PredictiveDecayAnalyzer from './PredictiveDecayAnalyzer';
 
 export default function AIInsightsDashboard() {
+    const router = useRouter();
     const { items: inventoryItems } = useInventory();
-    const { items: shoppingItems } = useShopping();
+    const { items: shoppingItems, addItem: addShoppingItem } = useShopping();
     const { meals } = useMeals();
     const { expenses } = useExpenses();
     const { currentHousehold } = useHousehold();
 
     const [wasteInsights, setWasteInsights] = useState<WasteInsight | null>(null);
     const [usagePatterns, setUsagePatterns] = useState<UsagePattern[]>([]);
-    const [recurringItems, setRecurringItems] = useState<Array<{ name: string; frequency: number }>>([]);
+    const [recurringItems, setRecurringItems] = useState<Array<{ name: string; frequency: number; avgQuantity?: number }>>([]);
+    const [reordered, setReordered] = useState<Record<string, boolean>>({});
+
+    const handleAutoReorder = async (name: string, quantity: number) => {
+        try {
+            await addShoppingItem({
+                name,
+                quantity: Math.max(1, Math.round(quantity || 1)),
+                unit: 'pcs',
+                purchased: false,
+                notes: 'Auto-reorder (recurring item)',
+            });
+            setReordered(prev => ({ ...prev, [name]: true }));
+        } catch (e) {
+            console.error('Auto-reorder failed', e);
+        }
+    };
     const [mealPlan, setMealPlan] = useState<MealPlanDay[]>([]);
     const [inventoryValue, setInventoryValue] = useState(0);
     const [healthInsights, setHealthInsights] = useState<any>(null);
@@ -92,10 +110,18 @@ export default function AIInsightsDashboard() {
                         household: currentHousehold
                     })
                 });
+                if (!res.ok) throw new Error('Health endpoint error');
                 const data = await res.json();
-                setHealthInsights(data);
+                // Only accept a well-formed response; the render path maps over
+                // these arrays, so a partial/error object would crash the panel.
+                if (data && Array.isArray(data.observations) && Array.isArray(data.risks) && Array.isArray(data.swaps)) {
+                    setHealthInsights(data);
+                } else {
+                    setHealthInsights(null);
+                }
             } catch (error) {
-                console.error("Health analysis failed");
+                console.error("Health analysis failed", error);
+                setHealthInsights(null);
             } finally {
                 setIsHealthLoading(false);
             }
@@ -310,8 +336,12 @@ export default function AIInsightsDashboard() {
                                     <span className="text-sm text-gray-600 dark:text-gray-400">
                                         Bought {item.frequency} times
                                     </span>
-                                    <button className="px-3 py-1 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors">
-                                        Auto-Reorder
+                                    <button
+                                        onClick={() => handleAutoReorder(item.name, item.avgQuantity || 1)}
+                                        disabled={reordered[item.name]}
+                                        className="px-3 py-1 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-60"
+                                    >
+                                        {reordered[item.name] ? '✓ Added' : 'Auto-Reorder'}
                                     </button>
                                 </div>
                             </div>
@@ -358,8 +388,11 @@ export default function AIInsightsDashboard() {
                         ))}
                     </div>
 
-                    <button className="w-full px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all">
-                        View Full Meal Plan
+                    <button
+                        onClick={() => router.push('/meals/planner')}
+                        className="w-full px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all"
+                    >
+                        Open Meal Planner
                     </button>
                 </motion.div>
             )}

@@ -13,18 +13,11 @@ export default function ExpenseLineChart({ expenses }: ExpenseLineChartProps) {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
 
-    // Generate last 7 days dummy data if no expenses, or aggregate real expenses
-    const data = useMemo(() => {
-        if (!expenses || expenses.length === 0) {
-            // Return mock data for demo visual
-            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            return days.map(day => ({
-                name: day,
-                amount: Math.floor(Math.random() * 100) + 20
-            }));
-        }
+    const hasData = Array.isArray(expenses) && expenses.length > 0;
 
-        // Real aggregation logic
+    // Aggregate real spend over the last 7 days (zeros when there's no data —
+    // never fabricated random values).
+    const data = useMemo(() => {
         const last7Days = new Array(7).fill(0).map((_, i) => {
             const d = new Date();
             d.setDate(d.getDate() - (6 - i));
@@ -34,13 +27,23 @@ export default function ExpenseLineChart({ expenses }: ExpenseLineChartProps) {
         return last7Days.map(date => {
             const dayStr = date.toISOString().split('T')[0];
             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-            const total = expenses
-                .filter(e => e.date.startsWith(dayStr))
-                .reduce((sum, e) => sum + e.amount, 0);
+            const total = (expenses || [])
+                .filter(e => typeof e.date === 'string' && e.date.startsWith(dayStr))
+                .reduce((sum, e) => sum + (e.amount || 0), 0);
 
             return { name: dayName, amount: total };
         });
     }, [expenses]);
+
+    if (!hasData) {
+        return (
+            <div className="h-64 w-full flex flex-col items-center justify-center text-center text-gray-500 dark:text-gray-400">
+                <span className="text-3xl mb-2">📊</span>
+                <p className="text-sm">No expense data yet</p>
+                <p className="text-xs">Add expenses to see your 7-day spending trend.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="h-64 w-full">

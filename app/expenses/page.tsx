@@ -99,12 +99,21 @@ export default function Expenses() {
                                 Track household expenses and budgets
                             </p>
                         </div>
-                        <button
-                            onClick={() => setShowAddModal(true)}
-                            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold"
-                        >
-                            + Add Expense
-                        </button>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowScanner(true)}
+                                className="flex items-center gap-2 px-5 py-3 bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors font-semibold"
+                            >
+                                <CameraIcon className="w-5 h-5" />
+                                Scan Receipt
+                            </button>
+                            <button
+                                onClick={() => setShowAddModal(true)}
+                                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold"
+                            >
+                                + Add Expense
+                            </button>
+                        </div>
                     </div>
 
                     {/* Summary Cards */}

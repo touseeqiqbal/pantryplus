@@ -89,6 +89,14 @@ const API_KEY = process.env.NEXT_PUBLIC_SPOONACULAR_API_KEY || '';
 const BASE_URL = 'https://api.spoonacular.com';
 
 /**
+ * Whether a live recipe API key is configured. When false, the service returns
+ * curated demo recipes and the UI should label them as sample data.
+ */
+export function isRecipeApiConfigured(): boolean {
+    return !!API_KEY;
+}
+
+/**
  * Find recipes by ingredients
  * @param ingredients - Array of ingredient names
  * @param number - Number of recipes to return (default: 10)

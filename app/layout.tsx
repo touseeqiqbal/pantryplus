@@ -6,8 +6,13 @@ import { HouseholdProvider } from "@/lib/hooks/useHousehold";
 import { BusinessProvider } from "@/lib/hooks/useBusiness";
 import { AppModeProvider } from "@/lib/hooks/useAppMode";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { UIProvider } from "./components/ui/Toaster";
 import BottomNav from "./components/BottomNav";
 import AIChatWidget from "./components/AIChatWidget";
+import OfflineIndicator from "./components/OfflineIndicator";
+import PWAInstallPrompt from "./components/PWAInstallPrompt";
+import SyncManager from "./components/SyncManager";
+import FirebaseStatus from "./components/FirebaseStatus";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -45,22 +50,27 @@ export default function RootLayout({
         <meta name="theme-color" content="#4f46e5" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        style={{ fontFamily: 'var(--font-sans, Inter, sans-serif)' }}
+        style={{ fontFamily: 'var(--font-geist-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif)' }}
       >
         <AuthProvider>
           <AppModeProvider>
             <BusinessProvider>
               <HouseholdProvider>
                 <ThemeProvider>
-                  {children}
-                  <BottomNav />
-                  <AIChatWidget />
+                  <UIProvider>
+                    {children}
+                    <BottomNav />
+                    <AIChatWidget />
+                    <OfflineIndicator />
+                    <PWAInstallPrompt />
+                    <SyncManager />
+                    {/* Dev-only diagnostic badge — never shown to end users in
+                        the deployed/production build (npm run build && start). */}
+                    {process.env.NODE_ENV !== 'production' && <FirebaseStatus />}
+                  </UIProvider>
                 </ThemeProvider>
               </HouseholdProvider>
             </BusinessProvider>

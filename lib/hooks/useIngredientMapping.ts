@@ -89,32 +89,46 @@ export function useIngredientMapping(menuItemId?: string) {
       syncStatus: user ? 'pending' : 'synced',
     };
 
+    // Local id we will write firebaseId / syncStatus back to.
+    let localId: number;
     if (existing?.id) {
        await db.ingredientMappings.update(existing.id, mappingData);
+       localId = existing.id;
     } else {
-       await db.ingredientMappings.add(mappingData as IngredientMapping);
+       localId = await db.ingredientMappings.add(mappingData as IngredientMapping);
     }
 
     if (user && firestore) {
       try {
-        // Use setDoc with a deterministic ID if possible, or query and update
+        // Reuse the existing remote doc if there is one; otherwise create it.
         const q = query(collection(firestore, 'ingredientMappings'), where('menuItemId', '==', menuItemId));
         const snapshot = await (await import('firebase/firestore')).getDocs(q);
-        
+
+        let firebaseId: string;
         if (!snapshot.empty) {
-           await updateDoc(doc(firestore, 'ingredientMappings', snapshot.docs[0].id), {
+           firebaseId = snapshot.docs[0].id;
+           await updateDoc(doc(firestore, 'ingredientMappings', firebaseId), {
               ...mappingData,
               syncStatus: 'synced'
            });
         } else {
-           await addDoc(collection(firestore, 'ingredientMappings'), mappingData);
+           const ref = await addDoc(collection(firestore, 'ingredientMappings'), mappingData);
+           firebaseId = ref.id;
         }
+
+        // Write the firebaseId back so the sync service won't create a duplicate.
+        await db.ingredientMappings.update(localId, { firebaseId, syncStatus: 'synced' });
+        const synced = await db.ingredientMappings.get(localId);
+        setMapping(synced || (mappingData as IngredientMapping));
+        return;
       } catch (error) {
         console.error('Error saving mapping to Firebase:', error);
+        await db.ingredientMappings.update(localId, { syncStatus: 'error' });
       }
     }
 
-    setMapping(mappingData as IngredientMapping);
+    const saved = await db.ingredientMappings.get(localId);
+    setMapping(saved || (mappingData as IngredientMapping));
   };
 
   return {

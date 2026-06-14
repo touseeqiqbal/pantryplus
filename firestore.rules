@@ -10,6 +10,16 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
+
+    // --- INPUT VALIDATION ---
+
+    // Inventory write must include the core required fields with valid types.
+    function isValidInventory(data) {
+      return data.name is string && data.name.size() > 0 &&
+        data.category is string &&
+        data.quantity is number && data.quantity >= 0 &&
+        data.unit is string;
+    }
     
     // --- HOUSEHOLD HELPERS ---
     
@@ -93,28 +103,41 @@ service cloud.firestore {
         (resource.data.keys().hasAll(['businessId']) && isBusinessMember(resource.data.businessId))
       );
       
+      allow create: if isAuthenticated() && isValidInventory(request.resource.data) && (
+        (request.resource.data.keys().hasAll(['householdId']) && isHouseholdMember(request.resource.data.householdId)) ||
+        (request.resource.data.keys().hasAll(['businessId']) && isBusinessMember(request.resource.data.businessId))
+      );
+
+      allow update: if isAuthenticated() && isValidInventory(request.resource.data) && (
+        (resource.data.keys().hasAll(['householdId']) && isHouseholdMember(resource.data.householdId)) ||
+        (resource.data.keys().hasAll(['businessId']) && isBusinessMember(resource.data.businessId))
+      );
+
+      allow delete: if isAuthenticated() && (
+        (resource.data.keys().hasAll(['householdId']) && isHouseholdMember(resource.data.householdId)) ||
+        (resource.data.keys().hasAll(['businessId']) && isBusinessMember(resource.data.businessId))
+      );
+    }
+
+    match /shopping/{itemId} {
+      allow read, update, delete: if isAuthenticated() && (
+        (resource.data.keys().hasAll(['householdId']) && isHouseholdMember(resource.data.householdId)) ||
+        (resource.data.keys().hasAll(['businessId']) && isBusinessMember(resource.data.businessId))
+      );
       allow create: if isAuthenticated() && (
         (request.resource.data.keys().hasAll(['householdId']) && isHouseholdMember(request.resource.data.householdId)) ||
         (request.resource.data.keys().hasAll(['businessId']) && isBusinessMember(request.resource.data.businessId))
       );
-      
-      allow update, delete: if isAuthenticated() && (
-        (resource.data.keys().hasAll(['householdId']) && isHouseholdMember(resource.data.householdId)) ||
-        (resource.data.keys().hasAll(['businessId']) && isBusinessMember(resource.data.businessId))
-      );
     }
-    
-    match /shopping/{itemId} {
-      allow read, write: if isAuthenticated() && (
-        (resource.data.keys().hasAll(['householdId']) && isHouseholdMember(resource.data.householdId)) ||
-        (resource.data.keys().hasAll(['businessId']) && isBusinessMember(resource.data.businessId))
-      );
-    }
-    
+
     match /recipes/{recipeId} {
-      allow read, write: if isAuthenticated() && (
+      allow read, update, delete: if isAuthenticated() && (
         (resource.data.keys().hasAll(['householdId']) && isHouseholdMember(resource.data.householdId)) ||
         (resource.data.keys().hasAll(['businessId']) && isBusinessMember(resource.data.businessId))
+      );
+      allow create: if isAuthenticated() && (
+        (request.resource.data.keys().hasAll(['householdId']) && isHouseholdMember(request.resource.data.householdId)) ||
+        (request.resource.data.keys().hasAll(['businessId']) && isBusinessMember(request.resource.data.businessId))
       );
     }
     
@@ -152,31 +175,41 @@ service cloud.firestore {
     }
     
     match /meals/{mealId} {
-      allow read, write: if isAuthenticated() && isHouseholdMember(resource.data.householdId);
+      allow read, update, delete: if isAuthenticated() && isHouseholdMember(resource.data.householdId);
+      allow create: if isAuthenticated() && isHouseholdMember(request.resource.data.householdId);
     }
-    
+
     match /tasks/{taskId} {
-      allow read, write: if isAuthenticated() && isHouseholdMember(resource.data.householdId);
+      allow read, update, delete: if isAuthenticated() && isHouseholdMember(resource.data.householdId);
+      allow create: if isAuthenticated() && isHouseholdMember(request.resource.data.householdId);
     }
-    
+
     match /expenses/{expenseId} {
-      allow read, write: if isAuthenticated() && isHouseholdMember(resource.data.householdId);
+      allow read, update, delete: if isAuthenticated() && isHouseholdMember(resource.data.householdId);
+      allow create: if isAuthenticated() && isHouseholdMember(request.resource.data.householdId);
     }
-    
+
     match /budgets/{budgetId} {
       allow read: if isAuthenticated() && isHouseholdMember(resource.data.householdId);
-      allow write: if isAuthenticated() && isHouseholdAdmin(request.resource.data.householdId);
+      allow create, update: if isAuthenticated() && isHouseholdAdmin(request.resource.data.householdId);
+      allow delete: if isAuthenticated() && isHouseholdAdmin(resource.data.householdId);
     }
-    
+
     match /notifications/{notificationId} {
-      allow read, write: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
     
     match /activities/{activityId} {
-      allow read: if isAuthenticated() && 
+      allow read: if isAuthenticated() &&
         ((resource.data.keys().hasAll(['householdId']) && isHouseholdMember(resource.data.householdId)) ||
          (resource.data.keys().hasAll(['businessId']) && isBusinessMember(resource.data.businessId)));
-      allow write: if false;
+      // Members may append activity entries; logs are immutable once written.
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid &&
+        ((request.resource.data.keys().hasAll(['householdId']) && isHouseholdMember(request.resource.data.householdId)) ||
+         (request.resource.data.keys().hasAll(['businessId']) && isBusinessMember(request.resource.data.businessId)));
+      allow update, delete: if false;
     }
     
     // ============================================================================

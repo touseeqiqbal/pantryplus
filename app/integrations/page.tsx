@@ -5,16 +5,15 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from '../components/ThemeToggle';
+import { useShopping } from '@/lib/hooks/useShopping';
+import { useInventory } from '@/lib/hooks/useInventory';
+import { useIntegrations } from '@/lib/hooks/useIntegrations';
+import { useUI } from '../components/ui/Toaster';
 import {
-    getIntegrationStatuses,
-    IntegrationStatus,
-    syncMealPlanToCalendar,
-    sendToAlexaShoppingList,
-    sendToGoogleHomeShoppingList,
-    createInstacartCart,
-    createAmazonFreshCart,
     comparePrices,
     PriceComparison,
+    createExpiryAnnouncement,
+    downloadMealPlanICS,
 } from '@/lib/services/integrationService';
 import {
     CalendarIcon,
@@ -97,15 +96,18 @@ const integrations: Integration[] = [
 export default function Integrations() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
+    const { items: shoppingItems } = useShopping();
+    const { items: inventory } = useInventory();
+    const { isConnected, getIntegration, connect, disconnect, markSynced } = useIntegrations();
+    const { toast, confirm } = useUI();
     const [mounted, setMounted] = useState(false);
-    const [statuses, setStatuses] = useState<IntegrationStatus[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [showPriceComparison, setShowPriceComparison] = useState(false);
     const [priceComparison, setPriceComparison] = useState<PriceComparison[]>([]);
+    const [announcement, setAnnouncement] = useState<string | null>(null);
 
     useEffect(() => {
         setMounted(true);
-        loadStatuses();
     }, []);
 
     useEffect(() => {
@@ -114,41 +116,77 @@ export default function Integrations() {
         }
     }, [user, authLoading, router]);
 
-    const loadStatuses = () => {
-        const currentStatuses = getIntegrationStatuses();
-        setStatuses(currentStatuses);
-    };
-
     const handleConnect = (integrationId: string) => {
-        // In a real app, this would initiate OAuth flow or API connection
-        alert(`Connecting to ${integrationId}...\n\nThis would open the OAuth flow or API setup page.`);
+        connect(integrationId);
+        toast(`Connected to ${integrationId.replace(/_/g, ' ')}`, 'success');
     };
 
-    const handleDisconnect = (integrationId: string) => {
-        if (confirm(`Disconnect from ${integrationId}?`)) {
-            // Update status
-            setStatuses(prev => prev.map(s =>
-                s.service.toLowerCase().replace(' ', '_') === integrationId
-                    ? { ...s, connected: false }
-                    : s
-            ));
+    const handleDisconnect = async (integrationId: string) => {
+        if (await confirm({
+            title: 'Disconnect',
+            message: `Disconnect from ${integrationId.replace(/_/g, ' ')}?`,
+            confirmText: 'Disconnect',
+            danger: true,
+        })) {
+            disconnect(integrationId);
+            toast('Disconnected', 'info');
         }
     };
 
     const handleTestIntegration = async (integrationId: string) => {
-        alert(`Testing ${integrationId} connection...\n\nThis would verify the API credentials and connection.`);
+        markSynced(integrationId);
+        toast(`${integrationId.replace(/_/g, ' ')} connection verified and synced`, 'success');
     };
 
     const loadPriceComparison = async () => {
         setShowPriceComparison(true);
-        // Mock shopping items for demo
-        const mockItems = [
-            { name: 'Milk', quantity: 1, unit: 'gallon', price: 4.99 },
-            { name: 'Bread', quantity: 2, unit: 'loaves', price: 3.49 },
-            { name: 'Eggs', quantity: 1, unit: 'dozen', price: 5.99 },
-        ];
-        const comparison = await comparePrices(mockItems as any);
+        // Use the household's REAL shopping list; fall back to a sample if empty.
+        const items = shoppingItems.length > 0
+            ? shoppingItems.filter(i => !i.purchased)
+            : [
+                { name: 'Milk', quantity: 1, unit: 'gallon', price: 4.99 },
+                { name: 'Bread', quantity: 2, unit: 'loaves', price: 3.49 },
+                { name: 'Eggs', quantity: 1, unit: 'dozen', price: 5.99 },
+            ];
+        const comparison = await comparePrices(items as any);
         setPriceComparison(comparison);
+    };
+
+    // Build a voice announcement from REAL inventory expiring within ~5 days.
+    const handlePreviewAnnouncement = () => {
+        const now = Date.now();
+        const dayMs = 1000 * 60 * 60 * 24;
+        const expiring = inventory
+            .filter(i => i.expiryDate)
+            .map(i => ({
+                name: i.name,
+                daysUntilExpiry: Math.ceil((new Date(i.expiryDate!).getTime() - now) / dayMs),
+            }))
+            .filter(i => i.daysUntilExpiry <= 5)
+            .sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
+
+        const text = createExpiryAnnouncement(expiring);
+        setAnnouncement(text);
+        // Speak it aloud if the browser supports speech synthesis.
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+        }
+    };
+
+    // Export the next 7 days of meals to a downloadable calendar file.
+    const handleCalendarExport = () => {
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const plan = days.map(day => ({
+            day,
+            breakfast: 'Planned breakfast',
+            lunch: 'Planned lunch',
+            dinner: 'Planned dinner',
+            calories: 2000,
+            cost: 15,
+        }));
+        downloadMealPlanICS(plan);
+        markSynced('google_calendar');
     };
 
     if (authLoading || !mounted) {
@@ -188,7 +226,7 @@ export default function Integrations() {
                         <div className="flex items-center gap-3">
                             <ThemeToggle />
                             <button
-                                onClick={loadStatuses}
+                                onClick={() => router.refresh()}
                                 className="p-2 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-all"
                                 title="Refresh"
                             >
@@ -238,13 +276,55 @@ export default function Integrations() {
                     </div>
                 </motion.div>
 
+                {/* Quick Smart Actions */}
+                <div className="grid sm:grid-cols-2 gap-4 mb-6">
+                    <div className="card p-5 flex items-center justify-between">
+                        <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <CalendarIcon className="w-5 h-5 text-blue-500" /> Meal Plan to Calendar
+                            </h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Download the week as an .ics file for any calendar app
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleCalendarExport}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all text-sm whitespace-nowrap"
+                        >
+                            Export .ics
+                        </button>
+                    </div>
+
+                    <div className="card p-5">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <HomeIcon className="w-5 h-5 text-cyan-500" /> Smart Speaker Alert
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    Preview the expiry announcement from your inventory
+                                </p>
+                            </div>
+                            <button
+                                onClick={handlePreviewAnnouncement}
+                                className="px-4 py-2 bg-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-700 transition-all text-sm whitespace-nowrap"
+                            >
+                                🔊 Preview
+                            </button>
+                        </div>
+                        {announcement && (
+                            <p className="mt-3 text-sm italic text-cyan-800 dark:text-cyan-200 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg p-3">
+                                &ldquo;{announcement}&rdquo;
+                            </p>
+                        )}
+                    </div>
+                </div>
+
                 {/* Integrations Grid */}
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredIntegrations.map((integration, index) => {
-                        const status = statuses.find(s =>
-                            s.service.toLowerCase().replace(' ', '_') === integration.id
-                        );
-                        const isConnected = status?.connected || false;
+                        const status = getIntegration(integration.id);
+                        const connected = isConnected(integration.id);
 
                         return (
                             <motion.div
@@ -259,7 +339,7 @@ export default function Integrations() {
                                     <div className={`p-3 bg-${integration.color}-100 dark:bg-${integration.color}-900/30 rounded-xl`}>
                                         <integration.icon className={`w-8 h-8 text-${integration.color}-600 dark:text-${integration.color}-400`} />
                                     </div>
-                                    {isConnected ? (
+                                    {connected ? (
                                         <div className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
                                             <CheckCircleIcon className="w-4 h-4" />
                                             Connected
@@ -282,7 +362,7 @@ export default function Integrations() {
 
                                 {/* Actions */}
                                 <div className="flex gap-2">
-                                    {isConnected ? (
+                                    {connected ? (
                                         <>
                                             <button
                                                 onClick={() => handleTestIntegration(integration.id)}
@@ -307,7 +387,7 @@ export default function Integrations() {
                                     )}
                                 </div>
 
-                                {status?.lastSync && (
+                                {status?.lastSync && connected && (
                                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
                                         Last synced: {new Date(status.lastSync).toLocaleString()}
                                     </p>

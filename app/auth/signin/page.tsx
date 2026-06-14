@@ -1,19 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Logo from '@/app/components/Logo';
+import { friendlyAuthError } from '@/lib/utils/authErrors';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signInWithGoogle } = useAuth();
+  const { user, signIn, signInWithGoogle } = useAuth();
   const router = useRouter();
+
+  // Already signed in? Skip the form.
+  useEffect(() => {
+    if (user) router.replace('/dashboard');
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +30,7 @@ export default function SignIn() {
       await signIn(email, password);
       router.push('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in');
+      setError(friendlyAuthError(err, 'Failed to sign in'));
     } finally {
       setLoading(false);
     }
@@ -38,7 +44,7 @@ export default function SignIn() {
       await signInWithGoogle();
       router.push('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in with Google');
+      setError(friendlyAuthError(err, 'Failed to sign in with Google'));
     } finally {
       setLoading(false);
     }

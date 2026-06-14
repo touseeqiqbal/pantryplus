@@ -135,7 +135,8 @@ export function analyzeWaste(
         .slice(0, 5);
 
     const totalWasted = expiredItems.length;
-    const wasteValue = topWasted.reduce((sum, item) => sum + item.value, 0);
+    // Sum value across ALL wasted items, not just the top 5 shown.
+    const wasteValue = Array.from(wasteByItem.values()).reduce((sum, w) => sum + w.value, 0);
 
     const recommendations: string[] = [];
 
@@ -201,11 +202,14 @@ export function analyzeUsagePatterns(
             return;
         }
 
-        // Calculate consumption rate
+        // Calculate consumption rate (guard against missing timestamps which
+        // would produce NaN and poison the average).
         const quantityChanges = history.map((h, i) => {
             if (i === 0) return 0;
+            if (!h.updatedAt || !history[i - 1].updatedAt) return 0;
             const prevQuantity = history[i - 1].quantity;
             const daysDiff = (new Date(h.updatedAt).getTime() - new Date(history[i - 1].updatedAt).getTime()) / (1000 * 60 * 60 * 24);
+            if (!Number.isFinite(daysDiff)) return 0;
             return (prevQuantity - h.quantity) / Math.max(daysDiff, 1);
         }).filter(rate => rate > 0);
 

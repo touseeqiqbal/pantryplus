@@ -93,6 +93,8 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
                     createdBy: data.createdBy,
                     createdAt: data.createdAt,
                     members: data.members,
+                    memberIds: data.memberIds || (data.members || []).map((m: HouseholdMember) => m.userId),
+                    userId: data.userId,
                     settings: data.settings || {
                         currency: 'USD',
                         timezone: 'UTC',
@@ -198,6 +200,9 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
                     joinedAt: now,
                 },
             ],
+            // Stored locally too so the sync service emits a queryable document.
+            memberIds: [user.uid],
+            userId: user.uid,
             settings: {
                 currency: settings?.currency || 'USD',
                 timezone: settings?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -212,11 +217,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         // Sync to Firebase
         if (firestore) {
             try {
-                const docRef = await addDoc(collection(firestore, 'households'), {
-                    ...newHousehold,
-                    userId: user.uid,
-                    memberIds: [user.uid], // Add memberIds array for querying
-                });
+                const docRef = await addDoc(collection(firestore, 'households'), newHousehold);
 
                 // Update local with Firebase ID
                 await db.households.update(localId, {
@@ -235,10 +236,23 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
             } catch (error) {
                 console.error('Error syncing household to Firebase:', error);
                 await db.households.update(localId, { syncStatus: 'error' });
-                throw error;
+                // Offline / transient failure: keep the local household active so the
+                // user can keep working; the sync service will flush it later.
+                const localHousehold = await db.households.get(localId);
+                if (localHousehold) {
+                    setCurrentHousehold(localHousehold);
+                    localStorage.setItem('currentHouseholdId', String(localId));
+                }
+                return localId.toString();
             }
         }
 
+        // No Firestore configured: operate fully offline.
+        const localHousehold = await db.households.get(localId);
+        if (localHousehold) {
+            setCurrentHousehold(localHousehold);
+            localStorage.setItem('currentHouseholdId', String(localId));
+        }
         return localId.toString();
     };
 
@@ -253,6 +267,12 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     const inviteMember = async (email: string) => {
         if (!user || !currentHousehold || !firestore) {
             throw new Error('Cannot invite member');
+        }
+
+        // Only owners/admins may invite (mirrors the Firestore rule).
+        const currentMember = currentHousehold.members.find((m) => m.userId === user.uid);
+        if (!currentMember || (currentMember.role !== 'owner' && currentMember.role !== 'admin')) {
+            throw new Error('Only owners or admins can invite members');
         }
 
         const now = new Date().toISOString();
