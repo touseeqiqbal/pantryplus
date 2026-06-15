@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   try {
     const { messages, inventoryContext, householdContext } = await req.json();
 
-    const systemPrompt = `You are Pantry+, an AI-powered kitchen and pantry assistant built to help households save money, reduce food waste, manage inventory, and make better daily food decisions.
+    const systemPrompt = `You are Pantry Plus, an AI-powered kitchen and pantry assistant built to help households save money, reduce food waste, manage inventory, and make better daily food decisions.
 
 Your role:
 You act like a proactive “Living Kitchen Brain.” You analyze the household’s pantry, fridge, freezer, shopping list, meal plans, expiry dates, leftovers, budget patterns, and dietary settings to give practical, personalized help.

@@ -84,7 +84,7 @@ function screenshotSvg(w, h, label) {
     </defs>
     <rect width="${w}" height="${h}" fill="url(#g)"/>
     <text x="${w / 2}" y="${h / 2 - 20}" font-family="Arial, sans-serif" font-size="${Math.round(w / 12)}"
-          font-weight="700" fill="white" text-anchor="middle">Pantry+</text>
+          font-weight="700" fill="white" text-anchor="middle">Pantry Plus</text>
     <text x="${w / 2}" y="${h / 2 + 30}" font-family="Arial, sans-serif" font-size="${Math.round(w / 28)}"
           fill="white" opacity="0.85" text-anchor="middle">${label}</text>
   </svg>`;

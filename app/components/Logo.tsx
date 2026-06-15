@@ -46,7 +46,7 @@ export default function Logo({ size = 'md', className = '', showText = true }: L
       {/* Brand Text */}
       {showText && (
         <span className={`${current.text} font-black tracking-tighter text-gray-900 dark:text-gray-100 flex items-center gap-1 transition-colors`}>
-          PANTRY <span className="text-primary-600 font-light">+</span>
+          Pantry <span className="text-primary-600 font-light">Plus</span>
         </span>
       )}
     </Link>

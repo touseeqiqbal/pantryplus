@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       messages: [
         {
           role: 'system',
-          content: `You are Pantry+ Health Insight AI. 
+          content: `You are Pantry Plus Health Insight AI.
           Analyze the household’s food inventory, cooked meals, grocery receipts, and meal patterns to identify health-related eating habits.
           
           Goal: Help users eat better in a practical, realistic, non-judgmental way.

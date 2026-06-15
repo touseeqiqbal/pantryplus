@@ -40,7 +40,18 @@ if (typeof window !== 'undefined') {
       // left undefined) without addDoc/updateDoc throwing — the app's hooks spread
       // optional fields that are frequently undefined. Offline persistence is
       // intentionally handled by IndexedDB (Dexie), not Firestore.
-      db = initializeFirestore(app, { ignoreUndefinedProperties: true });
+      //
+      // experimentalAutoDetectLongPolling: Firestore's default streaming
+      // WebChannel (the long-lived /Listen/channel?gsessionid=... requests) is
+      // frequently blocked by browser tracking-prevention (Edge/Brave/Opera),
+      // corporate proxies, and security software — surfacing as
+      // net::ERR_BLOCKED_BY_CLIENT and breaking realtime sync. Auto-detecting
+      // long-polling falls back to ordinary XHRs that these filters don't flag,
+      // so data syncs even in restrictive browsers.
+      db = initializeFirestore(app, {
+        ignoreUndefinedProperties: true,
+        experimentalAutoDetectLongPolling: true,
+      });
     } else {
       app = getApps()[0];
       auth = getAuth(app);

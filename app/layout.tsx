@@ -26,13 +26,13 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Pantry+ - Smart Kitchen Intelligence",
+  title: "Pantry Plus - Smart Kitchen Intelligence",
   description: "A comprehensive kitchen management app for inventory, meal planning, and operation tracking",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Pantry+",
+    title: "Pantry Plus",
   },
   // themeColor and viewport moved to explicit <meta> tags in the head
 };

@@ -213,6 +213,15 @@ service cloud.firestore {
     }
     
     // ============================================================================
+    // USER PROFILES (self-access only)
+    // ============================================================================
+
+    match /users/{userId} {
+      // A user can only read or write their own profile document.
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ============================================================================
     // DENY ALL OTHER COLLECTIONS
     // ============================================================================
     

@@ -83,12 +83,21 @@ export default function BottomNav() {
     ];
 
     const moreItems = [
-        { name: 'Settings', href: '/settings', emoji: '⚙️' },
-        { name: 'Integrations', href: '/integrations', emoji: '🔗' },
+        { name: 'Autopilot', href: '/autopilot', emoji: '🧭' },
+        { name: 'AI Assistant', href: '/assistant', emoji: '🤖' },
+        { name: 'Waste Coach', href: '/waste-coach', emoji: '♻️' },
+        { name: 'Budget Mode', href: '/budget-planner', emoji: '💸' },
+        { name: 'Insights', href: '/insights', emoji: '🏆' },
+        { name: 'Scan', href: '/scan', emoji: '🧾' },
+        { name: 'Family Taste', href: '/family', emoji: '🧠' },
+        { name: 'Health', href: '/health', emoji: '💚' },
         { name: 'Meal Planner', href: '/meals/planner', emoji: '🍽️' },
         { name: 'Tasks', href: '/tasks', emoji: '✓' },
         { name: 'Expenses', href: '/expenses', emoji: '💰' },
+        { name: 'Business', href: '/business', emoji: '🏪' },
+        { name: 'Integrations', href: '/integrations', emoji: '🔗' },
         { name: 'Household', href: '/household/settings', emoji: '🏠' },
+        { name: 'Settings', href: '/settings', emoji: '⚙️' },
     ];
 
     const handleNavClick = (item: NavItem) => {
@@ -126,7 +135,7 @@ export default function BottomNav() {
                         className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="p-6 pb-safe">
+                        <div className="p-6 pb-safe max-h-[78vh] overflow-y-auto">
                             {/* Handle Bar */}
                             <div className="w-12 h-1 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-6" />
 
