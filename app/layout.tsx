@@ -13,6 +13,7 @@ import OfflineIndicator from "./components/OfflineIndicator";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import SyncManager from "./components/SyncManager";
 import FirebaseStatus from "./components/FirebaseStatus";
+import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -55,6 +56,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         style={{ fontFamily: 'var(--font-geist-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif)' }}
       >
+        <FirestoreErrorGuard />
         <AuthProvider>
           <AppModeProvider>
             <BusinessProvider>

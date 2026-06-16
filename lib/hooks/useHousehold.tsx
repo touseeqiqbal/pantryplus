@@ -87,6 +87,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         const unsubscribe = onSnapshot(q, async (snapshot) => {
             // Process all changes sequentially to avoid race conditions
             await Promise.all(snapshot.docChanges().map(async (change) => {
+              try {
                 const data = change.doc.data();
                 // Defensive: drop any null/blank member entries so a malformed
                 // array never propagates into local state or a re-sync.
@@ -134,10 +135,16 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
                 } else if (change.type === 'removed') {
                     await db.households.where('firebaseId').equals(change.doc.id).delete();
                 }
+              } catch (err) {
+                // A single malformed document must not break the whole listener.
+                console.error('[household] skipped a document that failed to process:', err);
+              }
             }));
 
             const localHouseholds = await db.households.toArray();
             setHouseholds(localHouseholds);
+        }, (err) => {
+            console.error('[household] snapshot listener error:', err);
         });
 
         return unsubscribe;
