@@ -14,6 +14,7 @@ import {
     getDocs,
 } from 'firebase/firestore';
 import { db as firestore } from '@/lib/firebase/config';
+import { sanitizeForFirestore } from '@/lib/firebase/sanitize';
 import { useAuth } from './useAuth';
 
 interface HouseholdContextType {
@@ -87,13 +88,21 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
             // Process all changes sequentially to avoid race conditions
             await Promise.all(snapshot.docChanges().map(async (change) => {
                 const data = change.doc.data();
+                // Defensive: drop any null/blank member entries so a malformed
+                // array never propagates into local state or a re-sync.
+                const safeMembers: HouseholdMember[] = Array.isArray(data.members)
+                    ? data.members.filter((m: HouseholdMember) => m && m.userId)
+                    : [];
+                const safeMemberIds: string[] = (
+                    Array.isArray(data.memberIds) ? data.memberIds : safeMembers.map((m) => m.userId)
+                ).filter((uid: unknown): uid is string => typeof uid === 'string' && uid.length > 0);
                 const household: Household = {
                     firebaseId: change.doc.id,
                     name: data.name,
                     createdBy: data.createdBy,
                     createdAt: data.createdAt,
-                    members: data.members,
-                    memberIds: data.memberIds || (data.members || []).map((m: HouseholdMember) => m.userId),
+                    members: safeMembers,
+                    memberIds: safeMemberIds,
                     userId: data.userId,
                     settings: data.settings || {
                         currency: 'USD',
@@ -217,7 +226,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         // Sync to Firebase
         if (firestore) {
             try {
-                const docRef = await addDoc(collection(firestore, 'households'), newHousehold);
+                const docRef = await addDoc(collection(firestore, 'households'), sanitizeForFirestore(newHousehold));
 
                 // Update local with Firebase ID
                 await db.households.update(localId, {
@@ -289,7 +298,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
             syncStatus: 'pending',
         };
 
-        await addDoc(collection(firestore, 'invitations'), invitation);
+        await addDoc(collection(firestore, 'invitations'), sanitizeForFirestore(invitation));
     };
 
     const removeMember = async (userId: string) => {
@@ -307,10 +316,10 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         const updatedMemberIds = updatedMembers.map(m => m.userId);
 
         const docRef = doc(firestore, 'households', currentHousehold.firebaseId || '');
-        await updateDoc(docRef, {
+        await updateDoc(docRef, sanitizeForFirestore({
             members: updatedMembers,
             memberIds: updatedMemberIds
-        });
+        }));
     };
 
     const updateHouseholdSettings = async (settings: Partial<Household['settings']>) => {
@@ -324,7 +333,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         };
 
         const docRef = doc(firestore, 'households', currentHousehold.firebaseId || '');
-        await updateDoc(docRef, { settings: updatedSettings });
+        await updateDoc(docRef, sanitizeForFirestore({ settings: updatedSettings }));
     };
 
     const acceptInvitation = async (invitationId: string) => {
@@ -345,13 +354,16 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
                 role: 'member' as const,
                 joinedAt: new Date().toISOString(),
             };
-            const updatedMembers = [...householdData.members, newMember];
+            const existingMembers = Array.isArray(householdData.members)
+                ? householdData.members.filter((m: HouseholdMember) => m && m.userId)
+                : [];
+            const updatedMembers = [...existingMembers, newMember];
             const updatedMemberIds = updatedMembers.map(m => m.userId);
 
-            await updateDoc(householdRef, {
+            await updateDoc(householdRef, sanitizeForFirestore({
                 members: updatedMembers,
                 memberIds: updatedMemberIds
-            });
+            }));
         }
 
         // Update invitation status
@@ -380,10 +392,10 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         const updatedMemberIds = updatedMembers.map(m => m.userId);
 
         const docRef = doc(firestore, 'households', currentHousehold.firebaseId || '');
-        await updateDoc(docRef, {
+        await updateDoc(docRef, sanitizeForFirestore({
             members: updatedMembers,
             memberIds: updatedMemberIds
-        });
+        }));
 
         // Remove from local storage
         if (currentHousehold.id) {

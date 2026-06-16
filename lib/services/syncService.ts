@@ -25,6 +25,7 @@ import {
   getDoc,
 } from 'firebase/firestore';
 import { db as firestore } from '@/lib/firebase/config';
+import { sanitizeForFirestore } from '@/lib/firebase/sanitize';
 
 // Dexie table name === Firestore collection name for every syncable entity.
 const SYNCABLE_TABLES = [
@@ -71,7 +72,9 @@ let syncInProgress = false;
 function toFirestorePayload(record: SyncableRecord): Record<string, unknown> {
   const { id, ...rest } = record;
   void id;
-  return { ...rest, syncStatus: 'synced' };
+  // sanitizeForFirestore strips null/undefined array elements that would
+  // otherwise corrupt the document and crash the SDK on read-back.
+  return sanitizeForFirestore({ ...rest, syncStatus: 'synced' });
 }
 
 /**
