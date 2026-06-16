@@ -38,10 +38,14 @@ next-env.d.ts
 # Firebase build and deployment files
 /firebase-debug.log
 /firebase-debug.*.log
-.firebaserc
+
+# Firebase service account keys — NEVER commit these
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+.firebase-sa*.json
+serviceAccountKey*.json
 
 # Firebase Hosting
-/firebase.json
 *.cache
 hosting/.cache
 

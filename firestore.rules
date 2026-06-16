@@ -88,8 +88,8 @@ service cloud.firestore {
 
     match /staff/{staffId} {
       // staffId is "businessId_uid"
-      allow read: if isAuthenticated() && 
-        (request.auth.uid == data.userId || isBusinessOwner(data.businessId));
+      allow read: if isAuthenticated() &&
+        (request.auth.uid == resource.data.userId || isBusinessOwner(resource.data.businessId));
       allow create, update, delete: if isAuthenticated() && isBusinessOwner(request.resource.data.businessId);
     }
     
