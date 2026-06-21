@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { Expense, Budget } from '@/lib/db/dexie';
+import { useCountry } from '@/lib/hooks/useCountry';
 
 interface ExpenseForecastProps {
     expenses: Expense[];
@@ -9,6 +10,7 @@ interface ExpenseForecastProps {
 }
 
 export default function ExpenseForecast({ expenses, budgets }: ExpenseForecastProps) {
+    const { formatPrice } = useCountry();
     const forecast = useMemo(() => {
         const now = new Date();
         const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -59,20 +61,20 @@ export default function ExpenseForecast({ expenses, budgets }: ExpenseForecastPr
                 <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Avg. Daily Spend</p>
                     <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                        ${forecast.dailyAverage.toFixed(2)}
+                        {formatPrice(forecast.dailyAverage)}
                     </p>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Projected Total</p>
                     <p className={`text-2xl font-bold ${forecast.status === 'danger' ? 'text-red-500' : 'text-gray-900 dark:text-white'
                         }`}>
-                        ${forecast.projectedTotal.toFixed(2)}
+                        {formatPrice(forecast.projectedTotal)}
                     </p>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Total Budget</p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                        ${forecast.totalBudget.toFixed(2)}
+                        {formatPrice(forecast.totalBudget)}
                     </p>
                 </div>
             </div>
@@ -80,7 +82,7 @@ export default function ExpenseForecast({ expenses, budgets }: ExpenseForecastPr
             {forecast.status === 'danger' && (
                 <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
                     ⚠️ Warning: Based on your current spending, you are projected to exceed your monthly budget by
-                    <span className="font-bold ml-1">${(forecast.projectedTotal - forecast.totalBudget).toFixed(2)}</span>.
+                    <span className="font-bold ml-1">{formatPrice(forecast.projectedTotal - forecast.totalBudget)}</span>.
                 </div>
             )}
 

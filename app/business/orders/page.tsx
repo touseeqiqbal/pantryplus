@@ -3,6 +3,7 @@
  * TODO: back with a Firestore `orders` collection scoped to the business.
  */
 import AppPageHeader from '@/app/components/AppPageHeader';
+import Price from '@/app/components/Price';
 import { demoBusinessOrders, type BusinessOrder } from '@/lib/demo-data';
 
 export const metadata = { title: 'Orders' };
@@ -15,11 +16,9 @@ const statusMeta: Record<BusinessOrder['status'], { label: string; cls: string }
 };
 
 export default function OrdersPage() {
-  const revenue = demoBusinessOrders.reduce((sum, o) => sum + o.total, 0);
-
   return (
     <div className="mx-auto max-w-4xl px-4 pb-28 pt-6 sm:pb-10">
-      <AppPageHeader emoji="🧾" title="Orders" subtitle={`${demoBusinessOrders.length} active orders · $${revenue} value`} gradient="from-violet-500 to-fuchsia-600" />
+      <AppPageHeader emoji="🧾" title="Orders" subtitle={`${demoBusinessOrders.length} active orders`} gradient="from-violet-500 to-fuchsia-600" />
 
       <div className="space-y-3">
         {demoBusinessOrders.map((o) => {
@@ -31,7 +30,7 @@ export default function OrdersPage() {
                 <p className="text-xs text-gray-500 dark:text-gray-400">{o.qty} × {o.item}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">${o.total}</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white"><Price value={o.total} /></span>
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${s.cls}`}>{s.label}</span>
               </div>
             </div>

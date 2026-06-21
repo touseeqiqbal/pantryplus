@@ -14,6 +14,7 @@ import ExpenseLineChart from '../components/ExpenseLineChart';
 import ActivityLog from '../components/ActivityLog';
 import AIInsightsDashboard from '../components/AIInsightsDashboard';
 import BusinessDashboard from '../components/BusinessDashboard';
+import GettingStarted from '../components/GettingStarted';
 import { useAppMode } from '@/lib/hooks/useAppMode';
 import Logo from '../components/Logo';
 import {
@@ -178,6 +179,9 @@ export default function Dashboard() {
                 {/* --- TAB CONTENT: OVERVIEW --- */}
                 {activeTab === 'overview' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                        {/* First-run guidance — auto-hides once complete or dismissed */}
+                        <GettingStarted itemCount={totalItems} />
+
                         {/* --- EPIC 2: PREDICTIVE & GAMIFICATION ENGINE --- */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Feature 7: Waste Reduction Gamification Score */}

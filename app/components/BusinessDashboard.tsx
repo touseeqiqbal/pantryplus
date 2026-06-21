@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useBusiness } from '@/lib/hooks/useBusiness';
 import { useInventory } from '@/lib/hooks/useInventory';
 import { useMenuItems } from '@/lib/hooks/useMenuItems';
+import { useCountry } from '@/lib/hooks/useCountry';
 import { 
   BuildingStorefrontIcon, 
   QueueListIcon, 
@@ -26,6 +27,7 @@ export default function BusinessDashboard() {
   const { currentBusiness, currentBranch, createBusiness, loading } = useBusiness();
   const { items } = useInventory(); // This now respects business context
   const { menuItems } = useMenuItems();
+  const { formatPrice } = useCountry();
   const [showSetup, setShowSetup] = useState(false);
   const [newBizName, setNewBizName] = useState('');
   const [newBizType, setNewBizType] = useState<'restaurant' | 'cafe' | 'cloud-kitchen'>('cafe');
@@ -164,7 +166,7 @@ export default function BusinessDashboard() {
                 </div>
                 <div className="p-3 bg-green-500/20 rounded-2xl border border-green-500/30">
                     <p className="text-xs text-green-300 font-medium uppercase">Menu Value</p>
-                    <p className="text-2xl font-bold text-green-200">${menuValue.toFixed(0)}</p>
+                    <p className="text-2xl font-bold text-green-200">{formatPrice(menuValue)}</p>
                 </div>
             </div>
         </div>
@@ -286,7 +288,7 @@ export default function BusinessDashboard() {
                            >
                               <option value="">Choose a dish...</option>
                               {menuItems.map(item => (
-                                 <option key={item.firebaseId} value={item.firebaseId}>{item.name} - ${(item.price ?? 0).toFixed(2)}</option>
+                                 <option key={item.firebaseId} value={item.firebaseId}>{item.name} - {formatPrice(item.price ?? 0)}</option>
                               ))}
                            </select>
                         </div>

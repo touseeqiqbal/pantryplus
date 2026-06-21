@@ -14,6 +14,7 @@ import {
 import { useInventory } from '@/lib/hooks/useInventory';
 import { useIngredientMapping } from '@/lib/hooks/useIngredientMapping';
 import { useMenuItems } from '@/lib/hooks/useMenuItems';
+import { useCountry } from '@/lib/hooks/useCountry';
 
 interface IngredientMapperModalProps {
     menuItemId: string;
@@ -23,6 +24,7 @@ interface IngredientMapperModalProps {
 export default function IngredientMapperModal({ menuItemId, onClose }: IngredientMapperModalProps) {
     const { items: inventoryItems } = useInventory(); // This respects business context
     const { menuItems, updateMenuItem } = useMenuItems();
+    const { formatPrice } = useCountry();
     const { mapping, saveMapping, loading: mappingLoading } = useIngredientMapping(menuItemId);
 
     const dish = useMemo(() => menuItems.find(m => m.firebaseId === menuItemId), [menuItems, menuItemId]);
@@ -117,11 +119,11 @@ export default function IngredientMapperModal({ menuItemId, onClose }: Ingredien
                     <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-800">
                             <p className="text-[10px] font-bold uppercase text-emerald-600 mb-1">Estimated Cost</p>
-                            <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400">${estimatedCost.toFixed(2)}</p>
+                            <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400">{formatPrice(estimatedCost)}</p>
                         </div>
                         <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-2xl border border-primary-100 dark:border-primary-800">
                             <p className="text-[10px] font-bold uppercase text-primary-600 mb-1">Sale Price</p>
-                            <p className="text-2xl font-black text-primary-700 dark:text-primary-400">${dish?.price.toFixed(2)}</p>
+                            <p className="text-2xl font-black text-primary-700 dark:text-primary-400">{formatPrice(dish?.price ?? 0)}</p>
                         </div>
                     </div>
 

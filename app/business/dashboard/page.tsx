@@ -4,6 +4,7 @@
  */
 import Link from 'next/link';
 import AppPageHeader from '@/app/components/AppPageHeader';
+import Price from '@/app/components/Price';
 import { demoBusinessKpis, demoCosting, costingMetrics } from '@/lib/demo-data';
 
 export const metadata = { title: 'Business Dashboard' };
@@ -18,12 +19,12 @@ export default function BusinessDashboardPage() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {[
-          { label: 'Revenue', value: `$${k.revenueMonth.toLocaleString()}`, tone: 'text-gray-900 dark:text-white' },
-          { label: 'Cost', value: `$${k.costMonth.toLocaleString()}`, tone: 'text-gray-900 dark:text-white' },
-          { label: 'Profit', value: `$${profit.toLocaleString()}`, tone: 'text-accent-600 dark:text-accent-400' },
+          { label: 'Revenue', value: <Price value={k.revenueMonth} />, tone: 'text-gray-900 dark:text-white' },
+          { label: 'Cost', value: <Price value={k.costMonth} />, tone: 'text-gray-900 dark:text-white' },
+          { label: 'Profit', value: <Price value={profit} />, tone: 'text-accent-600 dark:text-accent-400' },
           { label: 'Orders', value: k.ordersMonth, tone: 'text-primary-600 dark:text-primary-400' },
           { label: 'Avg margin', value: `${k.avgMargin}%`, tone: 'text-accent-600 dark:text-accent-400' },
-          { label: 'Waste', value: `$${k.wasteMonth}`, tone: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Waste', value: <Price value={k.wasteMonth} />, tone: 'text-amber-600 dark:text-amber-400' },
         ].map((c) => (
           <div key={c.label} className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
             <div className={`text-xl font-extrabold ${c.tone}`}>{c.value}</div>

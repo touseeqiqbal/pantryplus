@@ -5,6 +5,7 @@
  * TODO: compute these from real expenses, inventory, waste and meal-plan data.
  */
 import AppPageHeader from '@/app/components/AppPageHeader';
+import Price from '@/app/components/Price';
 import { demoInsights, demoPantryScore } from '@/lib/demo-data';
 
 export const metadata = { title: 'Insights' };
@@ -54,7 +55,7 @@ export default function InsightsPage() {
         <div className="space-y-6 lg:col-span-2">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: 'Waste saved', value: `$${demoInsights.wasteSaved.toFixed(0)}`, tone: 'text-accent-600 dark:text-accent-400' },
+              { label: 'Waste saved', value: <Price value={demoInsights.wasteSaved} />, tone: 'text-accent-600 dark:text-accent-400' },
               { label: 'Budget used', value: `${demoInsights.budgetUsedPct}%`, tone: 'text-gray-900 dark:text-white' },
               { label: 'Plan completion', value: `${demoInsights.mealPlanCompletionPct}%`, tone: 'text-primary-600 dark:text-primary-400' },
               { label: 'Top item', value: demoInsights.topIngredients[0], tone: 'text-gray-900 dark:text-white' },

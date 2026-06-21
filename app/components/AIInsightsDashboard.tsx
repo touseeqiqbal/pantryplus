@@ -35,9 +35,11 @@ import {
     ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import PredictiveDecayAnalyzer from './PredictiveDecayAnalyzer';
+import { useCountry } from '@/lib/hooks/useCountry';
 
 export default function AIInsightsDashboard() {
     const router = useRouter();
+    const { formatPrice } = useCountry();
     const { items: inventoryItems } = useInventory();
     const { items: shoppingItems, addItem: addShoppingItem } = useShopping();
     const { meals } = useMeals();
@@ -167,7 +169,7 @@ export default function AIInsightsDashboard() {
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Inventory Value</p>
                     <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                        ${inventoryValue.toFixed(0)}
+                        {formatPrice(inventoryValue)}
                     </p>
                 </motion.div>
 
@@ -234,7 +236,7 @@ export default function AIInsightsDashboard() {
 
                     <div className="mb-4">
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                            Estimated waste value: <span className="font-bold text-red-600">${wasteInsights.wasteValue.toFixed(2)}</span>
+                            Estimated waste value: <span className="font-bold text-red-600">{formatPrice(wasteInsights.wasteValue)}</span>
                         </p>
                     </div>
 
@@ -246,7 +248,7 @@ export default function AIInsightsDashboard() {
                                     <div key={index} className="flex items-center justify-between p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
                                         <span className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</span>
                                         <span className="text-sm text-red-600 dark:text-red-400">
-                                            {item.count} times • ${item.value.toFixed(2)}
+                                            {item.count} times • {formatPrice(item.value)}
                                         </span>
                                     </div>
                                 ))}
@@ -382,7 +384,7 @@ export default function AIInsightsDashboard() {
                                 </div>
                                 <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800 flex justify-between text-xs">
                                     <span className="text-gray-600 dark:text-gray-400">{day.calories} cal</span>
-                                    <span className="text-green-600 dark:text-green-400 font-semibold">${day.cost.toFixed(2)}</span>
+                                    <span className="text-green-600 dark:text-green-400 font-semibold">{formatPrice(day.cost)}</span>
                                 </div>
                             </div>
                         ))}

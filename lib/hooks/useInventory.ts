@@ -91,7 +91,15 @@ export function useInventory() {
         };
 
         if (change.type === 'added' || change.type === 'modified') {
-          await db.inventory.put(item);
+          // Reconcile by firebaseId so the realtime echo updates the existing
+          // local row instead of inserting a duplicate (put() with no primary
+          // key always inserts a new row).
+          const existing = await db.inventory.where('firebaseId').equals(change.doc.id).first();
+          if (existing?.id != null) {
+            await db.inventory.update(existing.id, item);
+          } else {
+            await db.inventory.add(item);
+          }
         } else if (change.type === 'removed') {
           await db.inventory.where('firebaseId').equals(change.doc.id).delete();
         }
@@ -128,10 +136,18 @@ export function useInventory() {
     if (user && firestore) {
       try {
         const docRef = await addDoc(collection(firestore, 'inventory'), newItem);
-        await db.inventory.update(id, {
-          firebaseId: docRef.id,
-          syncStatus: 'synced',
-        });
+        // The realtime listener may have already inserted this doc. If so, drop
+        // our optimistic row so we don't end up with duplicates; otherwise tag
+        // the optimistic row with its firebaseId.
+        const echo = await db.inventory.where('firebaseId').equals(docRef.id).first();
+        if (echo?.id != null && echo.id !== id) {
+          await db.inventory.delete(id);
+        } else {
+          await db.inventory.update(id, {
+            firebaseId: docRef.id,
+            syncStatus: 'synced',
+          });
+        }
       } catch (error) {
         console.error('Error syncing to Firebase:', error);
         await db.inventory.update(id, { syncStatus: 'error' });

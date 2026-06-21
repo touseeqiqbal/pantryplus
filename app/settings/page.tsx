@@ -6,6 +6,8 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from '../components/ThemeToggle';
 import { useUI } from '../components/ui/Toaster';
+import { useCountry } from '@/lib/hooks/useCountry';
+import { getCountry } from '@/lib/countries';
 import { deleteAllUserData } from '@/lib/services/dataService';
 import {
     UserCircleIcon,
@@ -77,7 +79,14 @@ const sections: SettingsSection[] = [
 export default function Settings() {
     const { user, loading: authLoading, signOut } = useAuth();
     const { toast, confirm } = useUI();
+    const { countryCode, setCountryCode, countries, country } = useCountry();
     const router = useRouter();
+
+    // Changing the country keeps the displayed currency in sync.
+    const handleCountryChange = (code: string) => {
+        setCountryCode(code);
+        setSettings((prev) => ({ ...prev, currency: getCountry(code).currency }));
+    };
     const [mounted, setMounted] = useState(false);
     const [activeSection, setActiveSection] = useState('account');
     const [saved, setSaved] = useState(false);
@@ -547,6 +556,26 @@ export default function Settings() {
                                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Regional Settings</h2>
 
                                 <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Country
+                                        </label>
+                                        <select
+                                            value={countryCode}
+                                            onChange={(e) => handleCountryChange(e.target.value)}
+                                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                        >
+                                            {countries.map((c) => (
+                                                <option key={c.code} value={c.code}>
+                                                    {c.flag} {c.name} ({c.currencySymbol})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            Sets your currency ({country.currency}), units ({country.units}), and tailors AI suggestions to local cuisine &amp; prices.
+                                        </p>
+                                    </div>
+
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                             Language

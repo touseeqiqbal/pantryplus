@@ -14,12 +14,14 @@ import { SparklesIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import AppPageHeader from '@/app/components/AppPageHeader';
 import { useInventory } from '@/lib/hooks/useInventory';
 import { useUI } from '@/app/components/ui/Toaster';
+import { useCountry } from '@/lib/hooks/useCountry';
 import { track } from '@/lib/analytics';
 import { demoAutopilotPlan, demoAutopilotSummary } from '@/lib/demo-data';
 
 export default function AutopilotPage() {
   const { items } = useInventory();
   const { toast } = useUI();
+  const { formatPrice } = useCountry();
   const [generatedAt, setGeneratedAt] = useState<string>('just now');
 
   const expiringSoon = useMemo(() => {
@@ -58,8 +60,8 @@ export default function AutopilotPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: 'Meals planned', value: s.mealsPlanned, tone: 'text-primary-600 dark:text-primary-400' },
-          { label: 'Est. week cost', value: `$${s.estWeekCost.toFixed(2)}`, tone: 'text-gray-900 dark:text-white' },
-          { label: 'Est. savings', value: `$${s.estSavings.toFixed(2)}`, tone: 'text-accent-600 dark:text-accent-400' },
+          { label: 'Est. week cost', value: formatPrice(s.estWeekCost), tone: 'text-gray-900 dark:text-white' },
+          { label: 'Est. savings', value: formatPrice(s.estSavings), tone: 'text-accent-600 dark:text-accent-400' },
           { label: 'Items reused', value: s.itemsReused, tone: 'text-gray-900 dark:text-white' },
         ].map((c) => (
           <div key={c.label} className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
@@ -87,7 +89,7 @@ export default function AutopilotPage() {
                       <p className="text-xs text-gray-500 dark:text-gray-400">Uses: {m.usesExpiring.join(', ')}</p>
                     </div>
                   </div>
-                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">${m.estCost.toFixed(2)}</span>
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{formatPrice(m.estCost)}</span>
                 </li>
               ))}
             </ul>

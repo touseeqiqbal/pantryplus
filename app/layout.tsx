@@ -5,6 +5,7 @@ import { AuthProvider } from "@/lib/hooks/useAuth";
 import { HouseholdProvider } from "@/lib/hooks/useHousehold";
 import { BusinessProvider } from "@/lib/hooks/useBusiness";
 import { AppModeProvider } from "@/lib/hooks/useAppMode";
+import { CountryProvider } from "@/lib/hooks/useCountry";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { UIProvider } from "./components/ui/Toaster";
 import BottomNav from "./components/BottomNav";
@@ -59,6 +60,7 @@ export default function RootLayout({
         <FirestoreErrorGuard />
         <AuthProvider>
           <AppModeProvider>
+            <CountryProvider>
             <BusinessProvider>
               <HouseholdProvider>
                 <ThemeProvider>
@@ -76,6 +78,7 @@ export default function RootLayout({
                 </ThemeProvider>
               </HouseholdProvider>
             </BusinessProvider>
+            </CountryProvider>
           </AppModeProvider>
         </AuthProvider>
       </body>

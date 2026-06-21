@@ -66,7 +66,17 @@ export function useIngredientMapping(menuItemId?: string) {
           updatedAt: docData.updatedAt,
           syncStatus: 'synced',
         };
-        await db.ingredientMappings.put(mappingData);
+        // Reconcile by firebaseId so the realtime echo updates the existing
+        // local row instead of inserting a duplicate.
+        const existing = await db.ingredientMappings
+          .where('firebaseId')
+          .equals(snapshot.docs[0].id)
+          .first();
+        if (existing?.id != null) {
+          await db.ingredientMappings.update(existing.id, mappingData as Partial<IngredientMapping>);
+        } else {
+          await db.ingredientMappings.add(mappingData);
+        }
         setMapping(mappingData);
       }
     });

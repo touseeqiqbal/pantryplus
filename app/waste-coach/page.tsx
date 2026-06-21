@@ -11,6 +11,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import AppPageHeader from '@/app/components/AppPageHeader';
 import { useInventory } from '@/lib/hooks/useInventory';
+import { useCountry } from '@/lib/hooks/useCountry';
 import { track } from '@/lib/analytics';
 import {
   demoWasteItems,
@@ -36,6 +37,7 @@ function deriveAction(days: number): WasteAction {
 
 export default function WasteCoachPage() {
   const { items } = useInventory();
+  const { formatPrice } = useCountry();
 
   const liveItems: WasteItem[] = useMemo(() => {
     return items
@@ -71,7 +73,7 @@ export default function WasteCoachPage() {
       {/* Impact */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: 'Saved this month', value: `$${demoWasteImpact.monthSaved.toFixed(2)}`, tone: 'text-accent-600 dark:text-accent-400' },
+          { label: 'Saved this month', value: formatPrice(demoWasteImpact.monthSaved), tone: 'text-accent-600 dark:text-accent-400' },
           { label: 'Waste avoided', value: `${demoWasteImpact.wasteAvoidedKg} kg`, tone: 'text-gray-900 dark:text-white' },
           { label: 'CO₂ avoided', value: `${demoWasteImpact.co2AvoidedKg} kg`, tone: 'text-gray-900 dark:text-white' },
           { label: 'Meals created', value: demoWasteImpact.mealsCreated, tone: 'text-primary-600 dark:text-primary-400' },

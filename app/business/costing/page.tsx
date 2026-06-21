@@ -4,6 +4,7 @@
  * TODO: replace demo items with useMenuItems() + useIngredientMapping() costing.
  */
 import AppPageHeader from '@/app/components/AppPageHeader';
+import Price from '@/app/components/Price';
 import { demoCosting, costingMetrics } from '@/lib/demo-data';
 
 export const metadata = { title: 'Recipe Costing' };
@@ -24,11 +25,11 @@ export default function CostingPage() {
                 <h2 className="font-bold text-gray-900 dark:text-white">{c.item}</h2>
               </div>
               <dl className="mt-4 space-y-2 text-sm">
-                <div className="flex justify-between"><dt className="text-gray-500 dark:text-gray-400">Ingredient cost</dt><dd className="font-medium text-gray-900 dark:text-white">${c.ingredientCost.toFixed(2)}</dd></div>
-                <div className="flex justify-between"><dt className="text-gray-500 dark:text-gray-400">Packaging</dt><dd className="font-medium text-gray-900 dark:text-white">${c.packaging.toFixed(2)}</dd></div>
-                <div className="flex justify-between border-t border-gray-100 pt-2 dark:border-gray-800"><dt className="text-gray-500 dark:text-gray-400">Total cost</dt><dd className="font-semibold text-gray-900 dark:text-white">${m.cost.toFixed(2)}</dd></div>
-                <div className="flex justify-between"><dt className="text-gray-500 dark:text-gray-400">Selling price</dt><dd className="font-semibold text-gray-900 dark:text-white">${c.sellingPrice.toFixed(2)}</dd></div>
-                <div className="flex justify-between"><dt className="text-gray-500 dark:text-gray-400">Profit</dt><dd className="font-bold text-accent-600 dark:text-accent-400">${m.profit.toFixed(2)}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500 dark:text-gray-400">Ingredient cost</dt><dd className="font-medium text-gray-900 dark:text-white"><Price value={c.ingredientCost} /></dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500 dark:text-gray-400">Packaging</dt><dd className="font-medium text-gray-900 dark:text-white"><Price value={c.packaging} /></dd></div>
+                <div className="flex justify-between border-t border-gray-100 pt-2 dark:border-gray-800"><dt className="text-gray-500 dark:text-gray-400">Total cost</dt><dd className="font-semibold text-gray-900 dark:text-white"><Price value={m.cost} /></dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500 dark:text-gray-400">Selling price</dt><dd className="font-semibold text-gray-900 dark:text-white"><Price value={c.sellingPrice} /></dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500 dark:text-gray-400">Profit</dt><dd className="font-bold text-accent-600 dark:text-accent-400"><Price value={m.profit} /></dd></div>
               </dl>
               <div className="mt-4 rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800/60">
                 <div className={`text-2xl font-extrabold ${marginTone}`}>{m.margin.toFixed(0)}%</div>

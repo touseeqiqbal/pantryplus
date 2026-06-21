@@ -27,6 +27,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { ShoppingItem } from '@/lib/db/dexie';
 import ThemeToggle from '../components/ThemeToggle';
 import VoiceInput from '../components/VoiceInput';
+import Price from '../components/Price';
 import { useUI } from '../components/ui/Toaster';
 import {
   PlusIcon,
@@ -147,7 +148,7 @@ function SortableShoppingItem({
                   className="flex items-center gap-1 text-sm font-semibold text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
                 >
                   <CurrencyDollarIcon className="w-4 h-4" />
-                  {item.price ? `$${item.price.toFixed(2)}` : 'Add price'}
+                  {item.price ? <Price value={item.price} /> : 'Add price'}
                 </button>
               )}
             </div>
@@ -368,7 +369,7 @@ export default function Shopping() {
               <h1 className="text-2xl font-bold gradient-text">Shopping List</h1>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {activeItems.length} items to buy
-                {total > 0 && ` • Total: $${total.toFixed(2)}`}
+                {total > 0 && <> • Total: <Price value={total} /></>}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -555,7 +556,7 @@ export default function Shopping() {
               Purchased ({purchasedItems.length})
               {total > 0 && (
                 <span className="ml-auto text-green-600 dark:text-green-400 font-bold">
-                  Total: ${total.toFixed(2)}
+                  Total: <Price value={total} />
                 </span>
               )}
             </h3>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useCountry } from '@/lib/hooks/useCountry';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Logo from '@/app/components/Logo';
@@ -15,6 +16,7 @@ export default function SignUp() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { user, signUp, signInWithGoogle } = useAuth();
+  const { countryCode, setCountryCode, countries } = useCountry();
   const router = useRouter();
 
   // Already signed in? Skip the form.
@@ -40,7 +42,7 @@ export default function SignUp() {
 
     try {
       await signUp(email, password);
-      router.push('/dashboard');
+      router.push('/onboarding');
     } catch (err) {
       setError(friendlyAuthError(err, 'Failed to create account'));
     } finally {
@@ -54,7 +56,9 @@ export default function SignUp() {
 
     try {
       await signInWithGoogle();
-      router.push('/dashboard');
+      // New Google accounts land in onboarding; returning accounts are bounced
+      // straight to the dashboard by the onboarding page itself.
+      router.push('/onboarding');
     } catch (err) {
       setError(friendlyAuthError(err, 'Failed to sign in with Google'));
     } finally {
@@ -131,6 +135,27 @@ export default function SignUp() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="••••••••"
               />
+            </div>
+
+            <div>
+              <label htmlFor="country" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Country
+              </label>
+              <select
+                id="country"
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                {countries.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.name} ({c.currencySymbol})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Personalizes your currency, units, and AI suggestions. You can change it later in Settings.
+              </p>
             </div>
 
             <button

@@ -11,6 +11,7 @@ import { SparklesIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 import { useInventory } from '@/lib/hooks/useInventory';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useAppMode } from '@/lib/hooks/useAppMode';
+import { useCountry } from '@/lib/hooks/useCountry';
 import { track } from '@/lib/analytics';
 import { aiPreviewPrompts } from '@/lib/marketing';
 
@@ -28,6 +29,7 @@ export default function AssistantPage() {
   const { items: inventory } = useInventory();
   const { currentHousehold } = useHousehold();
   const { isBusiness } = useAppMode();
+  const { country } = useCountry();
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,6 +52,13 @@ export default function AssistantPage() {
     isBusiness,
     size: currentHousehold?.members?.length || 1,
     dietaryRestrictions: currentHousehold?.settings?.dietaryProfile || 'None',
+    country: {
+      name: country.name,
+      currency: country.currency,
+      currencySymbol: country.currencySymbol,
+      units: country.units,
+      cuisines: country.cuisines,
+    },
   };
 
   const send = async (text: string) => {

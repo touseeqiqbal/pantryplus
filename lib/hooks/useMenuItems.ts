@@ -73,7 +73,14 @@ export function useMenuItems() {
         };
 
         if (change.type === 'added' || change.type === 'modified') {
-          await db.menuItems.put(item);
+          // Reconcile by firebaseId so the realtime echo updates the existing
+          // local row instead of inserting a duplicate.
+          const existing = await db.menuItems.where('firebaseId').equals(change.doc.id).first();
+          if (existing?.id != null) {
+            await db.menuItems.update(existing.id, item);
+          } else {
+            await db.menuItems.add(item);
+          }
         } else if (change.type === 'removed') {
           await db.menuItems.where('firebaseId').equals(change.doc.id).delete();
         }

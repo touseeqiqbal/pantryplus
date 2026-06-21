@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { BanknotesIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import AppPageHeader from '@/app/components/AppPageHeader';
 import { useUI } from '@/app/components/ui/Toaster';
+import { useCountry } from '@/lib/hooks/useCountry';
 import { track } from '@/lib/analytics';
 import { demoBudgetPlan, demoBudgetSummary } from '@/lib/demo-data';
 
@@ -29,6 +30,7 @@ const cuisines = ['Any', 'Pakistani', 'Indian', 'Arab', 'Turkish', 'Chinese', 'I
 
 export default function BudgetPlannerPage() {
   const { toast } = useUI();
+  const { country, formatPrice } = useCountry();
   const [generated, setGenerated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ budget: '25', days: '5', familySize: '1', diet: 'Student budget', allergies: 'Peanuts', ingredients: 'rice, eggs, lentils, potatoes, yogurt' });
@@ -43,8 +45,9 @@ export default function BudgetPlannerPage() {
       return;
     }
     setLoading(true);
-    track('budget_plan_generated', { budget: parsed.data.budget, days: parsed.data.days });
-    // TODO: await fetch('/api/budget/generate', { method:'POST', body: JSON.stringify(parsed.data) })
+    track('budget_plan_generated', { budget: parsed.data.budget, days: parsed.data.days, country: country.code });
+    // TODO: await fetch('/api/budget/generate', { method:'POST',
+    //   body: JSON.stringify({ ...parsed.data, country: country.code, currency: country.currency, cuisines: country.cuisines }) })
     await new Promise((r) => setTimeout(r, 700));
     setGenerated(true);
     setLoading(false);
@@ -63,7 +66,7 @@ export default function BudgetPlannerPage() {
         <form onSubmit={generate} className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 lg:col-span-2">
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Budget ($)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Budget ({country.currencySymbol})</label>
               <input value={form.budget} onChange={set('budget')} inputMode="decimal" className={inputCls} />
             </div>
             <div>
@@ -78,7 +81,7 @@ export default function BudgetPlannerPage() {
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Cuisine / diet</label>
             <select value={form.diet} onChange={set('diet')} className={inputCls}>
-              {cuisines.map((c) => <option key={c} value={c}>{c}</option>)}
+              {Array.from(new Set([...country.cuisines, ...cuisines])).map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
@@ -105,11 +108,11 @@ export default function BudgetPlannerPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-2xl border border-gray-200 bg-white p-4 text-center dark:border-gray-800 dark:bg-gray-900">
-                  <div className="text-xl font-extrabold text-gray-900 dark:text-white">${s.estCost.toFixed(2)}</div>
+                  <div className="text-xl font-extrabold text-gray-900 dark:text-white">{formatPrice(s.estCost)}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">Est. cost</div>
                 </div>
                 <div className="rounded-2xl border border-gray-200 bg-white p-4 text-center dark:border-gray-800 dark:bg-gray-900">
-                  <div className="text-xl font-extrabold text-accent-600 dark:text-accent-400">${s.remaining.toFixed(2)}</div>
+                  <div className="text-xl font-extrabold text-accent-600 dark:text-accent-400">{formatPrice(s.remaining)}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">Left over</div>
                 </div>
                 <div className="rounded-2xl border border-gray-200 bg-white p-4 text-center dark:border-gray-800 dark:bg-gray-900">

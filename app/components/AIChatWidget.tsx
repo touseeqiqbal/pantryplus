@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { useInventory } from '@/lib/hooks/useInventory';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -11,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useAppMode } from '@/lib/hooks/useAppMode';
+import { useCountry } from '@/lib/hooks/useCountry';
 
 interface ChatMessage {
   id: string;
@@ -27,6 +29,8 @@ export default function AIChatWidget() {
   const { items: inventory } = useInventory();
   const { currentHousehold } = useHousehold();
   const { isBusiness } = useAppMode();
+  const { country } = useCountry();
+  const pathname = usePathname();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const buildInventoryContext = () =>
@@ -44,7 +48,14 @@ export default function AIChatWidget() {
   const householdContext = {
     isBusiness,
     size: currentHousehold?.members?.length || 1,
-    dietaryRestrictions: currentHousehold?.settings?.dietaryProfile || 'None'
+    dietaryRestrictions: currentHousehold?.settings?.dietaryProfile || 'None',
+    country: {
+      name: country.name,
+      currency: country.currency,
+      currencySymbol: country.currencySymbol,
+      units: country.units,
+      cuisines: country.cuisines,
+    },
   };
 
   // Auto scroll to bottom
@@ -117,6 +128,9 @@ export default function AIChatWidget() {
       setIsLoading(false);
     }
   };
+
+  // Keep the focused onboarding flow clean — no floating assistant there.
+  if (pathname?.startsWith('/onboarding')) return null;
 
   return (
     <>

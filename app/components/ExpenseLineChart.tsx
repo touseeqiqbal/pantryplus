@@ -3,6 +3,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTheme } from 'next-themes';
 import { useMemo } from 'react';
+import { useCountry } from '@/lib/hooks/useCountry';
 
 // Mock data integration point - in real app, pass this via props from useExpenses
 interface ExpenseLineChartProps {
@@ -11,6 +12,7 @@ interface ExpenseLineChartProps {
 
 export default function ExpenseLineChart({ expenses }: ExpenseLineChartProps) {
     const { theme } = useTheme();
+    const { country } = useCountry();
     const isDark = theme === 'dark';
 
     const hasData = Array.isArray(expenses) && expenses.length > 0;
@@ -58,7 +60,7 @@ export default function ExpenseLineChart({ expenses }: ExpenseLineChartProps) {
                     <YAxis
                         stroke={isDark ? '#9ca3af' : '#6b7280'}
                         tick={{ fill: isDark ? '#9ca3af' : '#6b7280' }}
-                        tickFormatter={(value) => `$${value}`}
+                        tickFormatter={(value) => `${country.currencySymbol}${value}`}
                     />
                     <Tooltip
                         contentStyle={{

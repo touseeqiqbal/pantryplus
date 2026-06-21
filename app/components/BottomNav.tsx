@@ -42,9 +42,10 @@ export default function BottomNav() {
     // Real count of items still to buy (drives the Shopping tab badge).
     const shoppingToBuy = shoppingList.filter(i => !i.purchased).length;
 
-    // Hide navigation on auth pages or when user is not logged in
+    // Hide navigation on auth/onboarding pages or when user is not logged in
     const isAuthPage = pathname?.startsWith('/auth');
-    if (isAuthPage || (!loading && !user)) {
+    const isOnboarding = pathname?.startsWith('/onboarding');
+    if (isAuthPage || isOnboarding || (!loading && !user)) {
         return null;
     }
 

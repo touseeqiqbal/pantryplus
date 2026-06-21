@@ -102,7 +102,15 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
         };
 
         if (change.type === 'added' || change.type === 'modified') {
-           await db.businesses.put(business); // Dexie put handles add/update
+          // Reconcile by firebaseId so the realtime echo updates the existing
+          // local row instead of inserting a duplicate (put() with no primary
+          // key always inserts a new row).
+          const existing = await db.businesses.where('firebaseId').equals(change.doc.id).first();
+          if (existing?.id != null) {
+            await db.businesses.update(existing.id, business);
+          } else {
+            await db.businesses.add(business);
+          }
         } else if (change.type === 'removed') {
           await db.businesses.where('firebaseId').equals(change.doc.id).delete();
         }

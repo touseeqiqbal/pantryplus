@@ -3,6 +3,7 @@
  * TODO: back with Firestore inventory scoped to the business + stock deduction.
  */
 import AppPageHeader from '@/app/components/AppPageHeader';
+import Price from '@/app/components/Price';
 import { demoBusinessIngredients } from '@/lib/demo-data';
 
 export const metadata = { title: 'Business Ingredients' };
@@ -27,7 +28,7 @@ export default function BusinessIngredientsPage() {
                   {i.lowStock && <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-300">Low</span>}
                 </td>
                 <td className="px-4 py-3">{i.stock}</td>
-                <td className="px-4 py-3">${i.unitCost.toFixed(2)}</td>
+                <td className="px-4 py-3"><Price value={i.unitCost} /></td>
                 <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{i.supplier}</td>
               </tr>
             ))}

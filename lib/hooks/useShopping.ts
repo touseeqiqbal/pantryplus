@@ -69,7 +69,14 @@ export function useShopping() {
         };
 
         if (change.type === 'added' || change.type === 'modified') {
-          await db.shopping.put(item);
+          // Reconcile by firebaseId so the realtime echo updates the existing
+          // local row instead of inserting a duplicate.
+          const existing = await db.shopping.where('firebaseId').equals(change.doc.id).first();
+          if (existing?.id != null) {
+            await db.shopping.update(existing.id, item);
+          } else {
+            await db.shopping.add(item);
+          }
         } else if (change.type === 'removed') {
           await db.shopping.where('firebaseId').equals(change.doc.id).delete();
         }
@@ -104,10 +111,17 @@ export function useShopping() {
       try {
         const docRef = await addDoc(collection(firestore, 'shopping'), newItem);
 
-        await db.shopping.update(id, {
-          firebaseId: docRef.id,
-          syncStatus: 'synced',
-        });
+        // Drop the optimistic row if the realtime listener already inserted
+        // this doc; otherwise tag the optimistic row with its firebaseId.
+        const echo = await db.shopping.where('firebaseId').equals(docRef.id).first();
+        if (echo?.id != null && echo.id !== id) {
+          await db.shopping.delete(id);
+        } else {
+          await db.shopping.update(id, {
+            firebaseId: docRef.id,
+            syncStatus: 'synced',
+          });
+        }
       } catch (error) {
         console.error('Error syncing to Firebase:', error);
         await db.shopping.update(id, { syncStatus: 'error' });

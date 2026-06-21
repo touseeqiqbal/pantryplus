@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useExpenses } from '@/lib/hooks/useExpenses';
+import { useCountry } from '@/lib/hooks/useCountry';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import ExpenseForecast from '../components/ExpenseForecast';
@@ -26,6 +27,7 @@ export default function Expenses() {
     const { user, signOut } = useAuth();
     const { currentHousehold } = useHousehold();
     const { expenses, budgets, addExpense, deleteExpense, checkBudgetStatus } = useExpenses();
+    const { formatPrice } = useCountry();
     const router = useRouter();
 
     useEffect(() => {
@@ -123,7 +125,7 @@ export default function Expenses() {
                                 Total Expenses
                             </h3>
                             <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                                ${totalExpenses.toFixed(2)}
+                                {formatPrice(totalExpenses)}
                             </p>
                         </div>
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
@@ -131,7 +133,7 @@ export default function Expenses() {
                                 This Month
                             </h3>
                             <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                                ${monthlyExpenses.toFixed(2)}
+                                {formatPrice(monthlyExpenses)}
                             </p>
                         </div>
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
@@ -190,7 +192,7 @@ export default function Expenses() {
                                             <div className="flex items-center gap-4">
                                                 <div className="text-right">
                                                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                                                        ${expense.amount.toFixed(2)}
+                                                        {formatPrice(expense.amount)}
                                                     </p>
                                                     <p className="text-xs text-gray-500 dark:text-gray-400">
                                                         {expense.currency}
